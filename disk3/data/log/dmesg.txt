@@ -1,0 +1,531 @@
+Linux version 2.6.38.8rt (root@kerneldev) (gcc version 4.4.3 (Ubuntu 4.4.3-4ubuntu5.1) ) #212 PREEMPT Wed Sep 4 10:55:28 CST 2024
+CPU: vendor_id 'Genuine  RDC' unknown, using generic init.
+CPU: Your system may be unstable.
+BIOS-provided physical RAM map:
+ BIOS-e820: 0000000000000000 - 000000000009fc00 (usable)
+ BIOS-e820: 000000000009fc00 - 00000000000a0000 (reserved)
+ BIOS-e820: 00000000000e0000 - 0000000000100000 (reserved)
+ BIOS-e820: 0000000000100000 - 000000001f000000 (usable)
+ BIOS-e820: 00000000fff80000 - 0000000100000000 (reserved)
+Notice: NX (Execute Disable) protection missing in CPU!
+DMI present.
+DMI: LNC Technology Co., Ltd.    A9300                 /A9300                 , BIOS 006.01  03/20/2012
+e820 update range: 0000000000000000 - 0000000000010000 (usable) ==> (reserved)
+e820 remove range: 00000000000a0000 - 0000000000100000 (usable)
+last_pfn = 0x1f000 max_arch_pfn = 0x100000
+initial memory mapped : 0 - 00c00000
+init_memory_mapping: 0000000000000000-000000001f000000
+ 0000000000 - 001f000000 page 4k
+kernel direct mapping tables up to 1f000000 @ b81000-c00000
+496MB LOWMEM available.
+  mapped low ram: 0 - 1f000000
+  low ram: 0 - 1f000000
+Zone PFN ranges:
+  DMA      0x00000010 -> 0x00001000
+  Normal   0x00001000 -> 0x0001f000
+Movable zone start PFN for each node
+early_node_map[2] active PFN ranges
+    0: 0x00000010 -> 0x0000009f
+    0: 0x00000100 -> 0x0001f000
+On node 0 totalpages: 126863
+free_area_init_node: node 0, pgdat c055bb68, node_mem_map dec20200
+  DMA zone: 32 pages used for memmap
+  DMA zone: 0 pages reserved
+  DMA zone: 3951 pages, LIFO batch:0
+  Normal zone: 960 pages used for memmap
+  Normal zone: 121920 pages, LIFO batch:31
+Allocating PCI resources starting at 1f000000 (gap: 1f000000:e0f80000)
+pcpu-alloc: s0 r0 d32768 u32768 alloc=1*32768
+pcpu-alloc: [0] 0 
+Built 1 zonelists in Zone order, mobility grouping on.  Total pages: 125871
+Kernel command line: BOOT_IMAGE=bzImage ro quiet splash root=/dev/sda1 video=rdcfb:mode=1366x768-16 loglevel=0
+PID hash table entries: 2048 (order: 1, 8192 bytes)
+Dentry cache hash table entries: 65536 (order: 6, 262144 bytes)
+Inode-cache hash table entries: 32768 (order: 5, 131072 bytes)
+Initializing CPU#0
+Memory: 495668k/507904k available (2869k kernel code, 11784k reserved, 1608k data, 232k init, 0k highmem)
+virtual kernel memory layout:
+    fixmap  : 0xfffe4000 - 0xfffff000   ( 108 kB)
+    vmalloc : 0xdf800000 - 0xfffe2000   ( 519 MB)
+    lowmem  : 0xc0000000 - 0xdf000000   ( 496 MB)
+      .init : 0xc0560000 - 0xc059a000   ( 232 kB)
+      .data : 0xc03cd5f6 - 0xc055f940   (1608 kB)
+      .text : 0xc0100000 - 0xc03cd5f6   (2869 kB)
+Checking if this processor honours the WP bit even in supervisor mode...Ok.
+SLUB: Genslabs=15, HWalign=32, Order=0-3, MinObjects=0, CPUs=1, Nodes=1
+Preemptable hierarchical RCU implementation.
+	RCU-based detection of stalled CPUs is disabled.
+	Verbose stalled-CPUs detection is disabled.
+NR_IRQS:16
+CPU 0 irqstacks, hard=de406000 soft=de408000
+I-pipe 2.11-03: pipeline enabled.
+Console: colour VGA+ 80x25
+console [tty0] enabled
+Fast TSC calibration using PIT
+Detected 900.018 MHz processor.
+Calibrating delay loop (skipped), value calculated using timer frequency.. 1800.03 BogoMIPS (lpj=9000180)
+pid_max: default: 32768 minimum: 301
+Mount-cache hash table entries: 512
+CPU: Genuine  RDC 05/08 stepping 06
+Performance Events: 
+devtmpfs: initialized
+NET: Registered protocol family 16
+PCI: Using configuration type 1 for base access
+bio: create slab <bio-0> at 0
+vgaarb: loaded
+SCSI subsystem initialized
+libata version 3.00 loaded.
+usbcore: registered new interface driver usbfs
+usbcore: registered new interface driver hub
+usbcore: registered new device driver usb
+PCI: Probing PCI hardware
+PCI: Probing PCI hardware (bus 00)
+pci 0000:00:00.0: [17f3:6022] type 0 class 0x000600
+pci 0000:00:06.0: [4c4e:4301] type 0 class 0x00ffff
+pci 0000:00:06.0: reg 10: [io  0xef80-0xef9f]
+pci 0000:00:06.1: [17f3:1790] type 0 class 0x00ffff
+pci 0000:00:06.1: reg 10: [io  0xee00-0xeeff]
+pci 0000:00:06.1: reg 14: [mem 0xfebffc00-0xfebffcff]
+pci 0000:00:06.1: reg 18: [io  0xef00-0xef0f]
+pci 0000:00:07.0: [17f3:6130] type 0 class 0x000601
+pci 0000:00:08.0: [17f3:6040] type 0 class 0x000200
+pci 0000:00:08.0: reg 10: [io  0xed00-0xedff]
+pci 0000:00:08.0: reg 14: [mem 0xfebff800-0xfebff8ff]
+pci 0000:00:08.0: reg 30: [mem 0xfebe0000-0xfebeffff pref]
+pci 0000:00:0a.0: [17f3:6060] type 0 class 0x000c03
+pci 0000:00:0a.0: reg 10: [mem 0xfebfe000-0xfebfefff]
+pci 0000:00:0a.1: [17f3:6061] type 0 class 0x000c03
+pci 0000:00:0a.1: reg 10: [mem 0xfebff400-0xfebff4ff]
+pci 0000:00:0c.0: [17f3:1011] type 0 class 0x000101
+pci 0000:00:0c.0: reg 10: [io  0xec80-0xec87]
+pci 0000:00:0c.0: reg 14: [io  0xec00-0xec03]
+pci 0000:00:0c.0: reg 18: [io  0xeb80-0xeb87]
+pci 0000:00:0c.0: reg 1c: [io  0xeb00-0xeb03]
+pci 0000:00:0c.0: reg 20: [io  0xea80-0xea8f]
+pci 0000:00:0d.0: [17f3:2012] type 0 class 0x000300
+pci 0000:00:0d.0: reg 10: [mem 0xfd000000-0xfdffffff]
+pci 0000:00:0d.0: reg 14: [mem 0xfebc0000-0xfebdffff]
+pci 0000:00:0d.0: reg 18: [io  0xea00-0xea7f]
+pci 0000:00:0d.0: supports D1 D2
+vgaarb: device added: PCI:0000:00:0d.0,decodes=io+mem,owns=io+mem,locks=none
+pci 0000:00:07.0: default IRQ router [17f3:6130]
+PCI: pci_cache_line_size set to 32 bytes
+reserve RAM buffer: 000000000009fc00 - 000000000009ffff 
+reserve RAM buffer: 000000001f000000 - 000000001fffffff 
+Switching to clocksource pit
+cfg80211: Calling CRDA to update world regulatory domain
+pci_bus 0000:00: resource 0 [io  0x0000-0xffff]
+pci_bus 0000:00: resource 1 [mem 0x00000000-0xffffffff]
+NET: Registered protocol family 2
+IP route cache hash table entries: 4096 (order: 2, 16384 bytes)
+TCP established hash table entries: 16384 (order: 5, 131072 bytes)
+TCP bind hash table entries: 16384 (order: 4, 65536 bytes)
+TCP: Hash tables configured (established 16384 bind 16384)
+TCP reno registered
+UDP hash table entries: 256 (order: 0, 4096 bytes)
+UDP-Lite hash table entries: 256 (order: 0, 4096 bytes)
+NET: Registered protocol family 1
+RPC: Registered udp transport module.
+RPC: Registered tcp transport module.
+RPC: Registered tcp NFSv4.1 backchannel transport module.
+pci 0000:00:0d.0: Boot video device
+PCI: CLS 16 bytes, default 32
+platform rtc_cmos: registered platform RTC device (no PNP device found)
+HugeTLB registered 4 MB page size, pre-allocated 0 pages
+NTFS driver 2.1.30 [Flags: R/W].
+fuse init (API version 7.16)
+msgmni has been set to 968
+Block layer SCSI generic (bsg) driver version 0.4 loaded (major 253)
+io scheduler noop registered
+io scheduler deadline registered (default)
+fbcon: RDC M2012 (fb0) is primary device
+Console: switching to colour frame buffer device 170x48
+VFB options (null)
+Serial: 8250/16550 driver, 10 ports, IRQ sharing enabled
+serial8250: ttyS0 at I/O 0x3f8 (irq = 4) is a 16550A
+serial8250: ttyS1 at I/O 0x2f8 (irq = 3) is a 16550A
+serial8250: ttyS2 at I/O 0x3e8 (irq = 4) is a 16550A
+Switching to clocksource tsc
+serial8250: ttyS3 at I/O 0x2e8 (irq = 3) is a 16550A
+brd: module loaded
+loop: module loaded
+usbcore: registered new interface driver ub
+pata_rdc 0000:00:0c.0: version 0.01
+scsi0 : pata_rdc
+scsi1 : pata_rdc
+ata1: PATA max UDMA/100 cmd 0xec80 ctl 0xec00 bmdma 0xea80 irq 11
+ata2: PATA max UDMA/100 cmd 0xeb80 ctl 0xeb00 bmdma 0xea88 irq 11
+Fusion MPT base driver 3.04.18
+Copyright (c) 1999-2008 LSI Corporation
+Fusion MPT SPI Host driver 3.04.18
+ehci_hcd: USB 2.0 'Enhanced' Host Controller (EHCI) Driver
+ehci_hcd 0000:00:0a.1: EHCI Host Controller
+ehci_hcd 0000:00:0a.1: new USB bus registered, assigned bus number 1
+ehci_hcd 0000:00:0a.1: irq 7, io mem 0xfebff400
+ehci_hcd 0000:00:0a.1: USB 2.0 started, EHCI 1.00
+hub 1-0:1.0: USB hub found
+hub 1-0:1.0: 2 ports detected
+ohci_hcd: USB 1.1 'Open' Host Controller (OHCI) Driver
+ohci_hcd 0000:00:0a.0: OHCI Host Controller
+ohci_hcd 0000:00:0a.0: new USB bus registered, assigned bus number 2
+ohci_hcd 0000:00:0a.0: irq 14, io mem 0xfebfe000
+hub 2-0:1.0: USB hub found
+hub 2-0:1.0: 2 ports detected
+uhci_hcd: USB Universal Host Controller Interface driver
+Initializing USB Mass Storage driver...
+usbcore: registered new interface driver usb-storage
+USB Mass Storage support registered.
+usbcore: registered new interface driver libusual
+usbcore: registered new interface driver ums-alauda
+usbcore: registered new interface driver ums-cypress
+usbcore: registered new interface driver ums-datafab
+usbcore: registered new interface driver ums-freecom
+usbcore: registered new interface driver ums-isd200
+usbcore: registered new interface driver ums-jumpshot
+usbcore: registered new interface driver ums-karma
+usbcore: registered new interface driver ums-onetouch
+usbcore: registered new interface driver ums-sddr09
+usbcore: registered new interface driver ums-sddr55
+usbcore: registered new interface driver ums-usbat
+serio: i8042 KBD port at 0x60,0x64 irq 1
+serio: i8042 AUX port at 0x60,0x64 irq 12
+mousedev: PS/2 mouse device common for all mice
+logibm.c: Didn't find Logitech busmouse at 0x23c
+input: PC Speaker as /devices/platform/pcspkr/input/input0
+rtc_cmos rtc_cmos: rtc core: registered rtc_cmos as rtc0
+rtc0: alarms up to one day, 114 bytes nvram
+[AAA] ilitek_init
+[PENMOUNT] Loading hid-penmount V1.19.2 (R0) 20220705
+usbcore: registered new interface driver usbhid
+usbhid: USB HID core driver
+TCP cubic registered
+NET: Registered protocol family 10
+NET: Registered protocol family 17
+rtc_cmos rtc_cmos: setting system clock to 2025-08-12 23:09:16 UTC (1755040156)
+BIOS EDD facility v0.16 2004-Jun-25, 0 devices found
+EDD information not available.
+input: AT Translated Set 2 keyboard as /devices/platform/i8042/serio0/input/input1
+ata1.00: CFA: TEAM CF938 1GB CARD, Q1204A, max UDMA/100
+ata1.00: 1981728 sectors, multi 0: LBA48 
+ata1.00: configured for UDMA/100
+scsi 0:0:0:0: Direct-Access     ATA      TEAM CF938 1GB C Q120 PQ: 0 ANSI: 5
+sd 0:0:0:0: Attached scsi generic sg0 type 0
+sd 0:0:0:0: [sda] 1981728 512-byte logical blocks: (1.01 GB/967 MiB)
+sd 0:0:0:0: [sda] Write Protect is off
+sd 0:0:0:0: [sda] Mode Sense: 00 3a 00 00
+sd 0:0:0:0: [sda] Write cache: disabled, read cache: enabled, doesn't support DPO or FUA
+ sda: sda1 sda2 sda3 sda4
+sd 0:0:0:0: [sda] Attached SCSI removable disk
+EXT4-fs (sda1): mounted filesystem without journal. Opts: (null)
+VFS: Mounted root (ext2 filesystem) readonly on device 8:1.
+devtmpfs: mounted
+Freeing unused kernel memory: 232k freed
+usb 2-2: new low speed USB device using ohci_hcd and address 2
+r6040: RDC R6040 NAPI net driver,version 0.25 (20Aug2009)
+i8042: Can't write CTR while closing AUX port
+usbcore: registered new interface driver r8188eu
+Clocksource tsc unstable (delta = 1019985324 ns)
+Switching to clocksource pit
+[TOUCH]special_driver
+
+bus 3 vendor 0x0 version 0
+input:  USB OPTICAL MOUSE as /devices/pci0000:00/0000:00:0a.0/usb2/2-2/2-2:1.0/input/input2
+[MICE] --match-- [retv 1] [bustype 3] [vendorID 0] [prod 538] [name  USB OPTICAL MOUSE]
+[MOUSE] --connect-- [bustype 3] [vendorID 0] [name  USB OPTICAL MOUSE]
+generic-usb 0003:0000:0538.0001: input,hidraw0: USB HID v1.11 Mouse [ USB OPTICAL MOUSE] on usb-0000:00:0a.0-2/input0
+rtl8192cu driver version=v4.0.2_9000.20130911
+build time: Dec 31 2014 11:37:19
+usbcore: registered new interface driver rtl8192cu
+RTW: module init start
+RTW: rtl8821au v5.3.4_28226.20180614_COEX20171103-6c6d
+RTW: rtl8821au BT-Coex version = COEX20171103-6c6d
+RTW: rtw_inetaddr_notifier_register
+usbcore: registered new interface driver rtl8821au
+RTW: module init ret=0
+rtusb init rt2870 --->
+usbcore: registered new interface driver rt2870
+eth0: link up, 100Mbps, full-duplex, lpa 0xC5E1
+EXT4-fs (sda2): mounted filesystem without journal. Opts: commit=1
+I-pipe: Domain RTAI registered.
+RTAI[hal]: <3.9.2> mounted over IPIPE-NOTHREADS 2.11-03.
+RTAI[hal]: compiled with gcc version 4.4.3 (Ubuntu 4.4.3-4ubuntu5.1) .
+RTAI[hal]: mounted (IPIPE-NOTHREADS, IMMEDIATE (INTERNAL IRQs VECTORED), ISOL_CPUS_MASK: 0).
+PIPELINE layers:
+df879900 9ac15d93 RTAI 2147483647
+c07a3d40 0 Linux 100
+RTAI[malloc]: global heap size = 2097152 bytes, <BSD>.
+RTAI[sched]: loaded (IMMEDIATE, UP, USER/KERNEL SPACE: <with RTAI OWN KTASKs>, <uses LINUX SYSCALLs>, kstacks pool size = 524288 bytes.
+RTAI[sched]: hard timer type/freq = 8254-PIT/1193180(Hz); default timing: periodic; linear timed lists.
+RTAI[sched]: Linux timer freq = 250 (Hz), TimeBase freq = 900018000 hz.
+RTAI[sched]: timer setup = 2009 ns, resched latency = 2689 ns.
+RTAI[math]: loaded.
+kbi: module license 'Proprietary' taints kernel.
+Disabling lock debugging due to kernel taint
+kbi module install..[Compiler Time:Dec  5 2016-14:40:03]
+[OSAL] Mount IOCTL cmd - Modules ID=255, Name=o, ioctl()=e12bcea0
+[OSAL] osal module install, Version=0
+EtherCAT: Master driver 1.5.2 2eff7c993a63
+EtherCAT: 1 master waiting for devices.
+ec_8139too: ec_8139too EtherCAT-capable Fast Ethernet driver 0.9.28, master 1.5.2 2eff7c993a63
+[OSAL] Mount IOCTL cmd - Modules ID=104, Name=H, ioctl()=e2804e0a
+HWIF module install
+HWIF module install..[Compiler Time:Nov 28 2024-14:37:33]
+[PLC] module install
+[PLC] PLC_Initial()
+[PLC] plccore_Init 
+[PLC] Allocate memory for DATA ok, size=22478848 PLCMData size=10200 IECData size=3645
+[PLC] Allocate memory for DATA ok, size=22478848
+[OSAL] Mount IOCTL cmd - Modules ID=115, Name=s, ioctl()=e550fa60
+[SZ] Init
+[SZ] InfoCheck ret:0 (0:ver1.0, -3:dos, -5:hwid err, -4:should be ver2.0)
+[SZ] INSTALL DONE
+[SZ] SN: 98247
+MOT module install
+MOT module install..[Compiler Time:Jul  1 2022-16:31:54]
+size CHAR_FD=1
+size SHORT_FD=2
+size LONG_FD=4
+size MOVE_CMD=512
+size COORD_CMD=288
+size MST_CMD=60
+size MOT_BLOCK=6023
+op module install
+op module install..[Compiler Time:Jun 29 2022-10:04:23]
+[COM] V3 Kernel Modules System Build Inf: Dec 12 2022 13:42:40
+[COM] Kernel object create ok
+COM module opened
+[COM] COM_Initial!
+[PLCLOADER] Enter KI_plc_LoadFile
+[USER_PLCLOADER]Here1
+[PLC](non-IEC)firstLoaded slot=0
+[PLC] install code 0, type=0, offset=0x0, size=0x1ef00 saCodeAssigned=1
+[PLC] install code 1, type=0, offset=0x0, size=0x5f25 saCodeAssigned=1
+[COM]iNo=1 bPLCCodeInit[iNo]=1
+[PLC] install code 2, type=0, offset=0x0, size=0x447e saCodeAssigned=1
+[COM]iNo=2 bPLCCodeInit[iNo]=1
+[PLCLOADER] stage=2 return val=0
+[COM] Prepare Init HWIF...
+[HWIF] HWIF VERSION: 203460000
+[ECAPP] ECAPP VERSION: 01.03.50.00.00
+[HWIF] CardType=16
+[HWIF SVI] SVIFunctionSelector=0, SVIOdr=0, SVIRange=0
+[HWIF] DAC Version =0x0
+[HWIF] RIO auto setting for P2
+[0]try111 [0]try110 [0]try100 [1]try111 
+eth0: no IPv6 routers present
+[1]try110 [1]try100 
+[HWIF] P2 RIO0 Exist = 0,0,0
+[HWIF] P2 RIO1 Exist = 0,0,0
+[HWIF] Install ISR, IRQ=9
+[HWIF P2] sDdaTime=4000, sDDALengthBit(4096)=20480, dDDALength(2048)=32768, ,usDivide=3, dChipClock(32)=32
+[HWIF P2] tObj->dRealIntTime=4077, pdRealDdaTime=4077
+[HWIF] P2 IntpTime Setting=4000,Real=4077
+[HWIF] COM2 is RS232
+[HWIF] COM3 is RS422 & Use for Comm I/O
+[HWIF] Enable COM3 CIO function, st_sel: 1 0 0 0 0 0 0 0 [CIO] Mode=Manual,1 0 0 0 0 0 0 0 
+[OSAL] 0 kthread has be installed.
+[OSAL] osal kthread0 install
+[HWIF] Enable COM3(Internal COM3) Comm I/O function
+[HWIF] Enable COM4(Internal COM4) OP function
+[CIO] Set BardRate=750000...
+[CIO] Manual ST
+[CIO] Send Cmd, St=0, Test Version 0
+[COM] HWIF Initial ok
+[OP] VERSION: 102170000
+[OP] Check hwif_sym.h Version OK
+[OP] Check mot_symb.h Version OK
+[INIT_INFO] : gsOpMaxPathNo : 1
+[INIT_INFO] : gsOpMaxAxisNo : 7
+MOTION VERSION: 304100021
+MOT Check hwif_sym.h Version OK
+MOT Check intp_if.h Version OK
+MOT_INIT : MaxPathNo : 1
+[Path & Axis mapping]
+[INTPBACC] : path : 0, sPathAxisMaxNo : 32
+MOT_INIT : ORG : MaxAxisNoUse : 7, MaxAxisNameUse : 7
+MOT_INIT : MOD : MaxAxisNoUse : 7, MaxAxisNameUse : 7
+[INTPBACC] : path : 0, sPathAxisMaxNo : 7
+MOT_INIT : gsAxisSeqNum : [ 0 1 2 6 ]
+MOT_INIT : gsAxisSeqMaxUseNo : 4
+[MOT_INIT] : sAxis : 0, EncModRange : 0
+[MOT_INIT] : sAxis : 1, EncModRange : 0
+[MOT_INIT] : sAxis : 2, EncModRange : 0
+[MOT_INIT] : sAxis : 6, EncModRange : 360000
+[COM] OP Initial ok
+[OSAL] 1 kthread has be installed.
+[OSAL] osal kthread1 install
+[com]read sz private 0 failed, err idx=9
+[com]read sz private 1 failed, err idx=9
+[com]read sz private 2 failed, err idx=9
+[com]read sz private 3 failed, err idx=9
+[com]read sz private 4 failed, err idx=9
+[com]read sz private 5 failed, err idx=9
+[com]read sz private 6 failed, err idx=9
+[com]read sz private 7 failed, err idx=9
+[com]read sz private 8 failed, err idx=9
+[com]read sz private 9 failed, err idx=9
+[com]read sz private 10 failed, err idx=9
+[com]read sz private 11 failed, err idx=9
+[com]read sz private 12 failed, err idx=9
+[com]read sz private 13 failed, err idx=9
+[com]read sz private 14 failed, err idx=9
+[com]read sz private 15 failed, err idx=9
+[com]read sz private 16 failed, err idx=9
+[com]read sz private 17 failed, err idx=9
+[com]read sz private 18 failed, err idx=9
+[com]read sz private 19 failed, err idx=9
+[com]read sz private 20 failed, err idx=9
+[com]read sz private 21 failed, err idx=9
+[com]read sz private 22 failed, err idx=9
+[com]read sz private 23 failed, err idx=9
+[com]read sz private 24 failed, err idx=9
+[com]read sz private 25 failed, err idx=9
+[com]read sz private 26 failed, err idx=9
+[com]read sz private 27 failed, err idx=9
+[com]read sz private 28 failed, err idx=9
+[com]read sz private 29 failed, err idx=9
+[com]read sz private 30 failed, err idx=9
+[com]read sz private 31 failed, err idx=9
+[com]read sz private 32 failed, err idx=9
+[com]read sz private 33 failed, err idx=9
+[com]read sz private 34 failed, err idx=9
+[com]read sz private 35 failed, err idx=9
+[com]read sz private 36 failed, err idx=9
+[com]read sz private 37 failed, err idx=9
+[com]read sz private 38 failed, err idx=9
+[com]read sz private 39 failed, err idx=9
+[com]read sz private 40 failed, err idx=9
+[com]read sz private 41 failed, err idx=9
+[com]read sz private 42 failed, err idx=9
+[com]read sz private 43 failed, err idx=9
+[com]read sz private 44 failed, err idx=9
+[com]read sz private 45 failed, err idx=9
+[com]read sz private 46 failed, err idx=9
+[com]read sz private 47 failed, err idx=9
+[com]read sz private 48 failed, err idx=9
+[com]read sz private 49 failed, err idx=9
+[com]read sz private 50 failed, err idx=9
+[com]read sz private 51 failed, err idx=9
+[com]read sz private 52 failed, err idx=9
+[com]read sz private 53 failed, err idx=9
+[com]read sz private 54 failed, err idx=9
+[com]read sz private 55 failed, err idx=9
+[com]read sz private 56 failed, err idx=9
+[com]read sz private 57 failed, err idx=9
+[com]read sz private 58 failed, err idx=9
+[com]read sz private 59 failed, err idx=9
+[com]read sz private 60 failed, err idx=9
+[com]read sz private 61 failed, err idx=9
+[com]read sz private 62 failed, err idx=9
+[com]read sz private 63 failed, err idx=9
+[com]read sz private 64 failed, err idx=9
+[com]read sz private 65 failed, err idx=9
+[com]read sz private 66 failed, err idx=9
+[com]read sz private 67 failed, err idx=9
+[com]read sz private 68 failed, err idx=9
+[com]read sz private 69 failed, err idx=9
+[com]read sz private 70 failed, err idx=9
+[com]read sz private 71 failed, err idx=9
+[com]read sz private 72 failed, err idx=9
+[com]read sz private 73 failed, err idx=9
+[com]read sz private 74 failed, err idx=9
+[com]read sz private 75 failed, err idx=9
+[com]read sz private 76 failed, err idx=9
+[com]read sz private 77 failed, err idx=9
+[com]read sz private 78 failed, err idx=9
+[com]read sz private 79 failed, err idx=9
+[com]read sz private 80 failed, err idx=9
+[com]read sz private 81 failed, err idx=9
+[com]read sz private 82 failed, err idx=9
+[com]read sz private 83 failed, err idx=9
+[com]read sz private 84 failed, err idx=9
+[com]read sz private 85 failed, err idx=9
+[com]read sz private 86 failed, err idx=9
+[com]read sz private 87 failed, err idx=9
+[com]read sz private 88 failed, err idx=9
+[com]read sz private 89 failed, err idx=9
+[com]read sz private 90 failed, err idx=9
+[com]read sz private 91 failed, err idx=9
+[com]read sz private 92 failed, err idx=9
+[com]read sz private 93 failed, err idx=9
+[com]read sz private 94 failed, err idx=9
+[com]read sz private 95 failed, err idx=9
+[com]read sz private 96 failed, err idx=9
+[com]read sz private 97 failed, err idx=9
+[com]read sz private 98 failed, err idx=9
+[com]read sz private 99 failed, err idx=9
+[HWIF] Mount MainISR
+COM module opened
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[PENMOUNT 9000]pmSerIo_init
+===== Connected 0x2 0xff 0x0 0x2
+===== Connected Model [9000] idx 0 ttyS0/serio0/input0
+serio: Serial port ttyS0
+input: PenMount Serial TouchScreenMM as /devices/platform/serial8250/tty/ttyS0/serio2/input/input3
+[MICE] --exclude-- [retv 0] [bustype 13] [vendorID 31] [prod 9000] [name PenMount Serial TouchScreenMM]
+COM module opened
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+COM module opened
+COM V3 module closed
+COM module opened
+COM module opened
+COM V3 module closed
+[CIO] Send Cmd, St=0, Test Version 0
+COM module opened
+COM V3 module closed
+COM module opened
+COM module opened
+COM module opened
+[CIO] Fail! Max Retry!
+[CIO] Set BardRate=115200...
+[CIO] Manual ST
+COM module opened
+COM V3 module closed
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Fail! Max Retry!
+[CIO] Set BardRate=57600...
+[CIO] Manual ST
+[CIO] Send Cmd, St=0, Test Version 0
+[CIO] Recv Data OK, St=0, DevName=0x11,Mode=0, Speed Type=3
+[CIO] to NORMAL RUN
+COM module opened
+COM V3 module closed
+COM module opened
+[COM] COM_Initial3!
+[HWIF] Isr Run
+[HWIF] Start DDA
+[INIT_INFO] : AXIS:1, Init OK
+[AXIS_OF_HWIF_INIT_INFO] : sAxis : 0, lHwifEnc : 0, lMessEnc : 0, idEncShift : 0, lSvEnc : 0, idEncModRange : 0, lDeltaHwifEnc : 0
+[INIT_INFO] : AXIS:2, Init OK
+[AXIS_OF_HWIF_INIT_INFO] : sAxis : 1, lHwifEnc : 0, lMessEnc : 0, idEncShift : 0, lSvEnc : 0, idEncModRange : 0, lDeltaHwifEnc : 0
+[INIT_INFO] : AXIS:3, Init OK
+[AXIS_OF_HWIF_INIT_INFO] : sAxis : 5, lHwifEnc : 0, lMessEnc : 0, idEncShift : 0, lSvEnc : 0, idEncModRange : 0, lDeltaHwifEnc : 0
+[INIT_INFO] : AXIS:7, Init OK
+[AXIS_OF_HWIF_INIT_INFO] : sAxis : 5, lHwifEnc : 0, lMessEnc : 0, idEncShift : 0, lSvEnc : 0, idEncModRange : 360000, lDeltaHwifEnc : 0
+usb 1-1: new high speed USB device using ehci_hcd and address 3
+scsi2 : usb-storage 1-1:1.0
+scsi 2:0:0:0: Direct-Access     Generic  Flash Disk       8.07 PQ: 0 ANSI: 4
+sd 2:0:0:0: [sdb] 31129600 512-byte logical blocks: (15.9 GB/14.8 GiB)
+sd 2:0:0:0: [sdb] Write Protect is off
+sd 2:0:0:0: [sdb] Mode Sense: 23 00 00 00
+sd 2:0:0:0: [sdb] Assuming drive cache: write through
+sd 2:0:0:0: Attached scsi generic sg1 type 0
+sd 2:0:0:0: [sdb] Assuming drive cache: write through
+ sdb: sdb1
+sd 2:0:0:0: [sdb] Assuming drive cache: write through
+sd 2:0:0:0: [sdb] Attached SCSI removable disk

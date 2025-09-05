@@ -1,0 +1,10 @@
+/cnc/machine/tool_magazine.dat 7000 7899
+/cnc/machine/user_param.dat 8000 9999
+/cnc/machine/tool_life.dat 90000 109999
+/cnc/machine/param_macro.dat 160000 179999
+/cnc/machine/user_param_def.dat 1000000 1020049
+/cnc/machine/openhmi.dat 1180001 1190000
+/cnc/machine/openproject.dat 1290001 1440000
+/cnc/machine/opendialog.dat 1060000 1179999
+/cnc/machine/openhmi_f.dat 21180001 21190000
+/cnc/machine/openproject_f.dat 21290001 21440000

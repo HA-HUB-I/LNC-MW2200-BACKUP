@@ -1,0 +1,102 @@
+;/* 共通巨集警報字串(英文) */
+  SELECT [#199]
+    /* G5 : 高速高精度參數P1~P5選擇 */
+    CASE 10000501:
+      ALARM["G05 P_ Is Not specified or Value Incorrect"];
+    CASE 10000502:
+      ALARM["G05 P_ Value Incorrect"];
+    CASE 10000503:
+      ALARM["Now Path Is Not Support G05 Function"];
+      
+    /* M20001 : 刀具磨耗管理巨集 */
+    CASE 22000101:
+      ALARM["Z Axis Reach Lowest Machine Coordinate, But Tool Setter No Trigger"];
+    CASE 22000102:
+      ALARM["Measurement Error Is Lagger Than 0.01mm"];
+    CASE 22000103:
+      ALARM["Auto Wear Measurement Macro Is Not Support Path #100"];
+    CASE 22000104:
+      ALARM["Start Machine Coordinate IS Not Correct"];
+      
+    /* M20100 : 自動對刀*/
+    CASE 22010001:
+      ALARM["Z Axis Reach Lowest Machine Coordinate, But Tool Setter No Trigger"];
+    CASE 22010002:
+      ALARM["Measurement Error Is Lagger Than 0.01mm"];
+    CASE 22010003:
+      ALARM["Auto Tool Measurement Mode Error"];
+    CASE 22010004:
+      ALARM["Auto Tool Measurement Macro P_ Is Out of Range"];
+    CASE 22010005:
+      ALARM["Auto Tool Measurement Macro T_ Is Out of Range"];
+    
+    /* M20101 : 多Z軸自對對刀 */
+    CASE 22010101:
+      ALARM["Z Axis Reach Lowest Machine Coordinate, But Tool Setter No Trigger"];
+    CASE 22010102:
+      ALARM["Measurement Error Is Lagger Than 0.01mm"];
+    CASE 22010103:
+      ALARM["Tool Measurement Signal is incorrect"];
+      
+     /* M20102 : 單Z軸多主軸自對對刀 */
+    CASE 22010201:
+      ALARM["Z Axis Reach Lowest Machine Coordinate, But Tool Setter No Trigger"];
+    CASE 22010202:
+      ALARM["Measurement Error Is Lagger Than 0.01mm"];
+    CASE 22010203:
+      ALARM["Tool Measurement Signal is incorrect"];
+
+    /* M20103 : 自動對刀*/
+    CASE 22010301:
+      ALARM["Z Axis Reach Lowest Machine Coordinate, But Tool Setter No Trigger"];
+    CASE 22010302:
+      ALARM["Measurement Error Is Lagger Than #65mm"];
+    CASE 22010303:
+      ALARM["Auto Tool Measurement Mode Error"];
+    CASE 22010304:
+      ALARM["Auto Wear Measurement Macro Is Not Support Path #100"];
+      
+    /* M20200 : 多Z軸探針量測 */
+    CASE 22020001:
+      ALARM["Z Axis Reach Lowest Machine Coordinate, But Tool Setter No Trigger"];
+    CASE 22020002:
+      ALARM["Measurement Error Is Lagger Than 0.01mm"];
+	
+    /* M21001 : R值寫入總線型驅動器參數 */
+    CASE 22100101:
+      ALARM["SUB\PARAM_STD_R ERROR"];
+    CASE 22100102:
+      ALARM["SUB\PARAM_STD_R ERROR #1(A) != 0~31"];
+    CASE 22100103:
+      ALARM["PARAM_WRITE Error Code : #97"];
+	
+    /* MAKER_MACRO_T0 : 選刀巨集 */
+    CASE 3000001:
+      ALARM[" Tool Number(T Code) Input Error"];
+    CASE 3000002:
+      ALARM[" Inner Tool Number Error"];
+    CASE 3000003:
+      ALARM[" T Macro And PLC Is Incompatible"];
+	  
+    CASE_ELSE
+      ALARM["Undefined Alarm ID(#199)"];
+  END_SELECT
+  
+  M99;
+
+;/**************************************************************************************************/
+;/*  Command depiction : MAKER_MACRO_COMMON_LANG.0002 (共通巨集警報字串:英文)                      */
+;/*  Command Use       : 警報ID編碼(共8碼,abbbbbcc),編碼說明如下:                                  */
+;/*                      第1碼(a) : 類別碼(1:G碼巨集,2:M碼巨集,3:T碼巨集)                          */
+;/*                      第2~6碼(bbbbb) : G/M/T碼名稱                                              */
+;/*                      第7~8碼(cc) : 警報編號                                                    */                                                                */
+;/*                                                                                                */
+;/*  Alter Histories                                                                               */
+;/*  Date         Version     Author          Comment                                              */
+;/*  ----------------------------------------------------------------------------------------------*/
+;/*  2016/01/08   0.0.1       Haowei.Nien     初版                                                 */
+;/*  2016/01/14   0.0.2       Haowei.Nien     新增"R值寫入總線型驅動器參數"警報字串                */
+;/*  2016/04/20   1.0.0       Haowei.Nien     修改錯誤代碼編碼方式並套用                           */
+;/*  2016/04/22   1.0.1       Haowei.Nien     加入M20200錯誤字串及修正CASE_ELSE語法錯誤的問題      */
+;/*  2016/07/09   1.0.2       Haowei.Nien     <修改> M20100警報字串說明                            */
+;/**************************************************************************************************/

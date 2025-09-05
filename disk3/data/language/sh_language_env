@@ -1,0 +1,2 @@
+#!/bin/sh
+export cnc_language="0002"

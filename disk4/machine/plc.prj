@@ -1,0 +1,15 @@
+[plc_code]
+type1=1
+src1=sys_cnc.lmlc
+code1=sys_cnc.lcod
+par1=sys_cnc.lpar
+
+type0=1
+src0=cnc.lmlc
+code0=cnc.lcod
+par0=cnc.lpar
+
+type2=1
+src2=prj_cnc.lmlc
+code2=prj_cnc.lcod
+par2=prj_cnc.lpar

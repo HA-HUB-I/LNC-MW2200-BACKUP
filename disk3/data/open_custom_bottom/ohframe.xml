@@ -1,0 +1,2679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- encoding="GB2312" encoding="iso-8859-15" encoding="SJIS" -->
+<OpenHMI>
+        <Information Model="M8000_V2" EditorVersion="02.00.01.05.36" OpenHMIVersion="02.02.01.04.41"/>
+
+        <SourceCodeFactory>
+                <SourceCodeItem SCType="sctQt" Enabled="false"/>
+        </SourceCodeFactory>
+
+        <ProjectSettings
+          ScreenWidth="1366"
+          ScreenHeight="768"
+          AutoScale="false"
+          AS_SetActualSize="false"
+          AS_SetActualSize_RNo="-1"
+          AS_SAS_ScreenWidth="0"
+          AS_SAS_ScreenWidth_RNo="-1"
+          AS_SAS_ScreenHeight="0"
+          AS_SAS_ScreenHeight_RNo="-1"
+          SizeNotZeroWhenScaling="false"
+          EnablePageAuthority="false"
+          ShowTitleBar="true"
+          FontName="unifont"
+          FontBold="false"
+          FontHeight="fh16"
+          FontHeightCustom="16"
+          Logo=""
+          LogoColor="clBlack"
+          LogoMarginEnable="false"
+          LogoMarginLeft="0"
+          LogoMarginTop="0"
+          LogoMarginRight="0"
+          LogoMarginBottom="0"
+          ProgBMarginEnable="false"
+          ProgBarMarginLeft="0"
+          ProgBarMarginRight="0"
+          ProgBarMarginBottom="0"
+          RemoteInitialVariableTable=""
+          RemoteVariableTable=""
+          ExportMoldDataItems=""
+          ScreenSaverPage=""
+        >
+        </ProjectSettings>
+
+        <ColorTableList
+          CurrentColorTable="1"
+        >
+                <ColorTable
+                >
+                </ColorTable>
+
+        </ColorTableList>
+
+        <AuthorityPageList>
+                <AuthorityPage PageName="QohFrame001" Checked="true"/>
+                <AuthorityPage PageName="QFrameChangeUser01" Checked="true"/>
+        </AuthorityPageList>
+
+        <StringTableList>
+        </StringTableList>
+
+        <StringMergeTableList>
+        </StringMergeTableList>
+
+        <NumberTableList>
+        </NumberTableList>
+
+        <MoldDataTableList>
+        </MoldDataTableList>
+
+        <VariableTableList>
+        </VariableTableList>
+
+        <StyleSheetList>
+        </StyleSheetList>
+
+        <MacroString>
+        </MacroString>
+
+        <MacroList>
+                <Macro Name="Atm" Comment="自動對刀">
+                        <Code>FMACRO &quot;QSTD_SaveCallBackMenu&quot;;</Code>
+                        <Code>CHANGE_MENU_2(&quot;QSTD_AutoToolLength&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code> W_REG(1190002, 7);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_ATM&quot;,&quot;BorderStyle&quot;,&quot;QSTD_SaveCallBackMenu&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;QSTD_AutoToolLength&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // 主專案頁面 主專案按鈕 (呼叫主專案 頁面按鈕)</Code>
+                </Macro>
+
+                <Macro Name="Cabient_Table_Param_Update_1" Comment="門櫃參數_1">
+                        <Code>#1 = R_REG(1356400);  // 門櫃模式</Code>
+                        <Code>#2 = #1*30;           // 門櫃R值偏移</Code>
+                        <Code>#11 = 0;</Code>
+                        <Code></Code>
+                        <Code>;// 判斷參數是否為0</Code>
+                        <Code>FOR #10 = 0 TO 29</Code>
+                        <Code>  IF(R_REG(1369041+#2+#10)!=0);</Code>
+                        <Code>    #11 = 1;</Code>
+                        <Code>    EXIT_FOR</Code>
+                        <Code>  END_IF</Code>
+                        <Code>END_FOR</Code>
+                        <Code></Code>
+                        <Code>;// 複製當前參數至參數表</Code>
+                        <Code>IF(#11 == 0)</Code>
+                        <Code>  ;//Path</Code>
+                        <Code>  W_REG(1369041+#2, R_REG(60100));      </Code>
+                        <Code>  W_REG(1369042+#2, R_REG(60106));  </Code>
+                        <Code>  W_REG(1369043+#2, R_REG(60112));  </Code>
+                        <Code>  W_REG(1369044+#2, R_REG(60118));    </Code>
+                        <Code>  W_REG(1369045+#2, R_REG(60130));  </Code>
+                        <Code>  W_REG(1369046+#2, R_REG(60172));  </Code>
+                        <Code></Code>
+                        <Code>  ;// X軸</Code>
+                        <Code>  W_REG(1369047+#2, R_REG(71132)); </Code>
+                        <Code>  W_REG(1369048+#2, R_REG(71164)); </Code>
+                        <Code>  W_REG(1369049+#2, R_REG(71200));  </Code>
+                        <Code>  W_REG(1369050+#2, R_REG(71232));  </Code>
+                        <Code>  W_REG(1369051+#2, R_REG(60286));  </Code>
+                        <Code>  W_REG(1369052+#2, R_REG(60214));  </Code>
+                        <Code>  ;// Y軸</Code>
+                        <Code>  W_REG(1369053+#2, R_REG(71133)); </Code>
+                        <Code>  W_REG(1369054+#2, R_REG(71165)); </Code>
+                        <Code>  W_REG(1369055+#2, R_REG(71201));  </Code>
+                        <Code>  W_REG(1369056+#2, R_REG(71233));  </Code>
+                        <Code>  W_REG(1369057+#2, R_REG(60287));  </Code>
+                        <Code>  W_REG(1369058+#2, R_REG(60215)); </Code>
+                        <Code>  ;// Z軸</Code>
+                        <Code>  W_REG(1369059+#2, R_REG(71134));  </Code>
+                        <Code>  W_REG(1369060+#2, R_REG(71166));  </Code>
+                        <Code>  W_REG(1369061+#2, R_REG(71202));  </Code>
+                        <Code>  W_REG(1369062+#2, R_REG(71234));  </Code>
+                        <Code>  W_REG(1369063+#2, R_REG(60288));   </Code>
+                        <Code>  W_REG(1369064+#2, R_REG(60216));   </Code>
+                        <Code>  ;// X1/Y1軸</Code>
+                        <Code>  W_REG(1369065+#2, R_REG(71137)); </Code>
+                        <Code>  W_REG(1369066+#2, R_REG(71169)); </Code>
+                        <Code>  W_REG(1369067+#2, R_REG(71205)); </Code>
+                        <Code>  W_REG(1369068+#2, R_REG(71237)); </Code>
+                        <Code>  W_REG(1369069+#2, R_REG(60291)); </Code>
+                        <Code>  W_REG(1369070+#2, R_REG(60219)); </Code>
+                        <Code>ELSE</Code>
+                        <Code>  ;//  </Code>
+                        <Code>  W_REG_BIT(71967, 2, #1);  // Z軸換向時到位檢查觸發開關</Code>
+                        <Code></Code>
+                        <Code>  ;//Path</Code>
+                        <Code>  W_REG(60100, R_REG(1369041+#2));</Code>
+                        <Code>  W_REG(60106, R_REG(1369042+#2));</Code>
+                        <Code>  W_REG(60112, R_REG(1369043+#2));</Code>
+                        <Code>  W_REG(60118, R_REG(1369044+#2));</Code>
+                        <Code>  W_REG(60130, R_REG(1369045+#2));</Code>
+                        <Code>  W_REG(60172, R_REG(1369046+#2));</Code>
+                        <Code></Code>
+                        <Code>  ;// X軸</Code>
+                        <Code>  W_REG(71132, R_REG(1369047+#2));</Code>
+                        <Code>  W_REG(71164, R_REG(1369048+#2));</Code>
+                        <Code>  W_REG(71200, R_REG(1369049+#2));</Code>
+                        <Code>  W_REG(71232, R_REG(1369050+#2));</Code>
+                        <Code>  W_REG(60286, R_REG(1369051+#2));</Code>
+                        <Code>  W_REG(60214, R_REG(1369052+#2));</Code>
+                        <Code>  ;// Y軸</Code>
+                        <Code>  W_REG(71133, R_REG(1369053+#2));</Code>
+                        <Code>  W_REG(71165, R_REG(1369054+#2));</Code>
+                        <Code>  W_REG(71201, R_REG(1369055+#2));</Code>
+                        <Code>  W_REG(71233, R_REG(1369056+#2));</Code>
+                        <Code>  W_REG(60287, R_REG(1369057+#2));</Code>
+                        <Code>  W_REG(60215, R_REG(1369058+#2));</Code>
+                        <Code>  ;// Z軸</Code>
+                        <Code>  W_REG(71134, R_REG(1369059+#2));</Code>
+                        <Code>  W_REG(71166, R_REG(1369060+#2));</Code>
+                        <Code>  W_REG(71202, R_REG(1369061+#2));</Code>
+                        <Code>  W_REG(71234, R_REG(1369062+#2));</Code>
+                        <Code>  W_REG(60288, R_REG(1369063+#2));</Code>
+                        <Code>  W_REG(60216, R_REG(1369064+#2));</Code>
+                        <Code>  ;// X1/Y1軸</Code>
+                        <Code>  W_REG(71137, R_REG(1369065+#2));</Code>
+                        <Code>  W_REG(71169, R_REG(1369066+#2));</Code>
+                        <Code>  W_REG(71205, R_REG(1369067+#2));</Code>
+                        <Code>  W_REG(71237, R_REG(1369068+#2));</Code>
+                        <Code>  W_REG(60291, R_REG(1369069+#2));</Code>
+                        <Code>  W_REG(60219, R_REG(1369070+#2));</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Cabient_Table_Param_Update_2" Comment="門櫃參數_2">
+                        <Code>#1 = R_REG(1356401);  // 門櫃模式</Code>
+                        <Code>#2 = #1*30;           // 門櫃R值偏移</Code>
+                        <Code>#11 = 0;</Code>
+                        <Code></Code>
+                        <Code>;// 判斷參數是否為0</Code>
+                        <Code>FOR #10 = 0 TO 29</Code>
+                        <Code>  IF(R_REG(1371701+#2+#10)!=0);</Code>
+                        <Code>    #11 = 1;</Code>
+                        <Code>    EXIT_FOR</Code>
+                        <Code>  END_IF</Code>
+                        <Code>END_FOR</Code>
+                        <Code></Code>
+                        <Code>;// 複製當前參數至參數表</Code>
+                        <Code>IF(#11 == 0)</Code>
+                        <Code>  ;//Path</Code>
+                        <Code>  W_REG(1371701+#2, R_REG(60101));      </Code>
+                        <Code>  W_REG(1371702+#2, R_REG(60107));  </Code>
+                        <Code>  W_REG(1371703+#2, R_REG(60113));  </Code>
+                        <Code>  W_REG(1371704+#2, R_REG(60119));    </Code>
+                        <Code>  W_REG(1371705+#2, R_REG(60131));  </Code>
+                        <Code>  W_REG(1371706+#2, R_REG(60173));  </Code>
+                        <Code></Code>
+                        <Code>  ;// X軸</Code>
+                        <Code>  W_REG(1371707+#2, R_REG(71141)); </Code>
+                        <Code>  W_REG(1371708+#2, R_REG(71173)); </Code>
+                        <Code>  W_REG(1371709+#2, R_REG(71209));  </Code>
+                        <Code>  W_REG(1371710+#2, R_REG(71241));  </Code>
+                        <Code>  W_REG(1371711+#2, R_REG(60295));  </Code>
+                        <Code>  W_REG(1371712+#2, R_REG(60223));  </Code>
+                        <Code>  ;// Y軸</Code>
+                        <Code>  W_REG(1371713+#2, R_REG(71142)); </Code>
+                        <Code>  W_REG(1371714+#2, R_REG(71174)); </Code>
+                        <Code>  W_REG(1371715+#2, R_REG(71210));  </Code>
+                        <Code>  W_REG(1371716+#2, R_REG(71242));  </Code>
+                        <Code>  W_REG(1371717+#2, R_REG(60296));  </Code>
+                        <Code>  W_REG(1371718+#2, R_REG(60224)); </Code>
+                        <Code>  ;// Z軸</Code>
+                        <Code>  W_REG(1371719+#2, R_REG(71143));  </Code>
+                        <Code>  W_REG(1371720+#2, R_REG(71175));  </Code>
+                        <Code>  W_REG(1371721+#2, R_REG(71211));  </Code>
+                        <Code>  W_REG(1371722+#2, R_REG(71243));  </Code>
+                        <Code>  W_REG(1371723+#2, R_REG(60297));   </Code>
+                        <Code>  W_REG(1371724+#2, R_REG(60225));   </Code>
+                        <Code>  ;// X1/Y1軸</Code>
+                        <Code>  W_REG(1371725+#2, R_REG(71146)); </Code>
+                        <Code>  W_REG(1371726+#2, R_REG(71178)); </Code>
+                        <Code>  W_REG(1371727+#2, R_REG(71214)); </Code>
+                        <Code>  W_REG(1371728+#2, R_REG(71246)); </Code>
+                        <Code>  W_REG(1371729+#2, R_REG(60300)); </Code>
+                        <Code>  W_REG(1371730+#2, R_REG(60228)); </Code>
+                        <Code>ELSE</Code>
+                        <Code>  ;//  </Code>
+                        <Code>  W_REG_BIT(71967, 11, #1);  // Z軸換向時到位檢查觸發開關</Code>
+                        <Code></Code>
+                        <Code>  ;//Path</Code>
+                        <Code>  W_REG(60101, R_REG(1371701+#2));</Code>
+                        <Code>  W_REG(60107, R_REG(1371702+#2));</Code>
+                        <Code>  W_REG(60113, R_REG(1371703+#2));</Code>
+                        <Code>  W_REG(60119, R_REG(1371704+#2));</Code>
+                        <Code>  W_REG(60131, R_REG(1371705+#2));</Code>
+                        <Code>  W_REG(60173, R_REG(1371706+#2));</Code>
+                        <Code></Code>
+                        <Code>  ;// X軸</Code>
+                        <Code>  W_REG(71141, R_REG(1371707+#2));</Code>
+                        <Code>  W_REG(71173, R_REG(1371708+#2));</Code>
+                        <Code>  W_REG(71209, R_REG(1371709+#2));</Code>
+                        <Code>  W_REG(71241, R_REG(1371710+#2));</Code>
+                        <Code>  W_REG(60295, R_REG(1371711+#2));</Code>
+                        <Code>  W_REG(60223, R_REG(1371712+#2));</Code>
+                        <Code>  ;// Y軸</Code>
+                        <Code>  W_REG(71142, R_REG(1371713+#2));</Code>
+                        <Code>  W_REG(71174, R_REG(1371714+#2));</Code>
+                        <Code>  W_REG(71210, R_REG(1371715+#2));</Code>
+                        <Code>  W_REG(71242, R_REG(1371716+#2));</Code>
+                        <Code>  W_REG(60296, R_REG(1371717+#2));</Code>
+                        <Code>  W_REG(60224, R_REG(1371718+#2));</Code>
+                        <Code>  ;// Z軸</Code>
+                        <Code>  W_REG(71143, R_REG(1371719+#2));</Code>
+                        <Code>  W_REG(71175, R_REG(1371720+#2));</Code>
+                        <Code>  W_REG(71211, R_REG(1371721+#2));</Code>
+                        <Code>  W_REG(71243, R_REG(1371722+#2));</Code>
+                        <Code>  W_REG(60297, R_REG(1371723+#2));</Code>
+                        <Code>  W_REG(60225, R_REG(1371724+#2));</Code>
+                        <Code>  ;// X1/Y1軸</Code>
+                        <Code>  W_REG(71146, R_REG(1371725+#2));</Code>
+                        <Code>  W_REG(71178, R_REG(1371726+#2));</Code>
+                        <Code>  W_REG(71214, R_REG(1371727+#2));</Code>
+                        <Code>  W_REG(71246, R_REG(1371728+#2));</Code>
+                        <Code>  W_REG(60300, R_REG(1371729+#2));</Code>
+                        <Code>  W_REG(60228, R_REG(1371730+#2));</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Edit" Comment="程式編輯">
+                        <Code>SHOW_PAGE_2(&quot;QohFrame013&quot;,&quot;0&quot;);</Code>
+                        <Code>CHANGE_MENU_2(&quot;Edit&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 3);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_EDIT&quot;,&quot;BorderStyle&quot;,&quot;Edit&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="FileMAG" Comment="檔案管理">
+                        <Code>ACTION(&quot;ProgramEdit&quot;);</Code>
+                        <Code>SHOW_PAGE(&quot;QFrameFileManagement&quot;);</Code>
+                        <Code>CHANGE_MENU_2(&quot;FileManager&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 5);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_MAG&quot;,&quot;BorderStyle&quot;,&quot;FileManager&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code></Code>
+                </Macro>
+
+                <Macro Name="Home" Comment="返回首頁">
+                        <Code>SHOW_PAGE_2(&quot;QohFrame011&quot;,&quot;0&quot;);</Code>
+                        <Code>CHANGE_MENU_2(&quot;Monitor&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 1);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_HMOE&quot;,&quot;BorderStyle&quot;,&quot;Monitor&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Macro_CNCMode_Change_1" Comment="路徑1按鈕變色">
+                        <Code>#1=22000;  // CNC 模式</Code>
+                        <Code>#3=1040001;  // CNC 模式 比較值</Code>
+                        <Code></Code>
+                        <Code>#101=R_REG(#1);</Code>
+                        <Code>#103=R_REG(#3);</Code>
+                        <Code></Code>
+                        <Code>IF [#101 == #103]</Code>
+                        <Code>  ;  // 防止重複執行以下巨集</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SELECT [#103]</Code>
+                        <Code>    CASE 0:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 1:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 2:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 3:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 5:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 4, 6:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE_ELSE</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);     </Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);            </Code>
+                        <Code>  END_SELECT</Code>
+                        <Code>  W_REG(#3, #101);  // 複寫 權限</Code>
+                        <Code></Code>
+                        <Code>  SELECT [#101]</Code>
+                        <Code>    CASE 0:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 1:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 2:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 3:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 5:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 4, 6:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE_ELSE</Code>
+                        <Code>    ;</Code>
+                        <Code>  END_SELECT</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Macro_CNCMode_Change_2" Comment="路徑2按鈕變色">
+                        <Code>#1=22001;  // CNC 模式</Code>
+                        <Code>#3=1369002;  // CNC 模式 比較值</Code>
+                        <Code></Code>
+                        <Code>#101=R_REG(#1);</Code>
+                        <Code>#103=R_REG(#3);</Code>
+                        <Code></Code>
+                        <Code>IF [#101 == #103]</Code>
+                        <Code>  ;  // 防止重複執行以下巨集</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SELECT [#103]</Code>
+                        <Code>    CASE 0:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 1:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 2:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 3:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 5:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE 4, 6:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>    CASE_ELSE</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);     </Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);  </Code>
+                        <Code>  END_SELECT</Code>
+                        <Code>  W_REG(#3, #101);  // 複寫 權限</Code>
+                        <Code></Code>
+                        <Code>  SELECT [#101]</Code>
+                        <Code>    CASE 0:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 1:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 2:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 3:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 5:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE 4, 6:</Code>
+                        <Code>      SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>    CASE_ELSE</Code>
+                        <Code>    ;</Code>
+                        <Code>  END_SELECT</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Openfile" Comment="開檔">
+                        <Code>CHANGE_MENU_2(&quot;QSTD_ProgEdit_Open&quot;,&quot;0&quot;);</Code>
+                        <Code>ACTION(&quot;ExecMenuButton,name=Monitor,id=0,page=0,function=0,macro=0,sub=1&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 2);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_OPENFILE&quot;,&quot;BorderStyle&quot;,&quot;QSTD_ProgEdit_Open&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code></Code>
+                </Macro>
+
+                <Macro Name="Param" Comment="調機參數">
+                        <Code>SHOW_PAGE_2(&quot;QohFrame054&quot;,&quot;0&quot;);</Code>
+                        <Code>CHANGE_MENU_2(&quot;adjust&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 12);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PARAM&quot;,&quot;BorderStyle&quot;,&quot;adjust&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Path" Comment="路徑切換">
+                        <Code>FMACRO &quot;QSTD_SaveCallBackMenu&quot;;</Code>
+                        <Code>CHANGE_MENU_2(&quot;QSTD_ChangePath&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 14);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PATH&quot;,&quot;BorderStyle&quot;,&quot;QSTD_SaveCallBackMenu&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;QSTD_ChangePath&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // 主專案頁面 主專案按鈕 (呼叫主專案 頁面按鈕)</Code>
+                </Macro>
+
+                <Macro Name="Process" Comment="排序加工">
+                        <Code>#1 = R_REG(1181393);  Process</Code>
+                        <Code>IF(#1==0)</Code>
+                        <Code>  RET</Code>
+                        <Code>ELSEIF(#1==1)</Code>
+                        <Code>  SHOW_PAGE(&quot;QFrameProcessAutoRun&quot;);</Code>
+                        <Code>  CHANGE_MENU_2(&quot;ProcessAutoRun&quot;,&quot;0&quot;);</Code>
+                        <Code>ELSEIF(#1==2)</Code>
+                        <Code>  CHANGE_MENU_2(&quot;ProcessList&quot;,&quot;0&quot;);   </Code>
+                        <Code>  SHOW_PAGE_2(&quot;QohFrame047&quot;,&quot;0&quot;)</Code>
+                        <Code>ELSEIF(#1==3 || #1==4)</Code>
+                        <Code>  CHANGE_MENU_2(&quot;PrintList&quot;,&quot;0&quot;);   </Code>
+                        <Code>  SHOW_PAGE_2(&quot;QohFrame037&quot;,&quot;0&quot;)</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 8);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PROCESS&quot;,&quot;BorderStyle&quot;,&quot;ProcessAutoRun&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code></Code>
+                </Macro>
+
+                <Macro_Private Name="QohFrame001_MacroOnLoaded" Comment="">
+                        <Code>W_REG(1040001, -1);</Code>
+                        <Code>W_REG(1369002, -1);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_ButtonColor&quot;,&quot;Enabled&quot;,&quot;true&quot;);</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohButtonCabinet_MacroOnButtonClick" Comment="">
+                        <Code>#1=R_REG(22013);</Code>
+                        <Code>#2=#1+1;</Code>
+                        <Code>W_REG(1356400+#1,1);</Code>
+                        <Code>FMACRO &quot;Cabient_Table_Param_Update_#2&quot;;</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohButtonDoor_MacroOnButtonClick" Comment="">
+                        <Code>#1=R_REG(22013);</Code>
+                        <Code>#2=#1+1;</Code>
+                        <Code>W_REG(1356400+#1,0);</Code>
+                        <Code>FMACRO &quot;Cabient_Table_Param_Update_#2&quot;;</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox1_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,1); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,1); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,1); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,1); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,1); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,1); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox2_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,10); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,10); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,10); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,10); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,10); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,10); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox3_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,100); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,100); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,100); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,100); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,100); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,100); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox4_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,500); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,500); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,500); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,500); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,500); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,500); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox5_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,1000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,1000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,1000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,1000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,1000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,1000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox6_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,5000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,5000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,5000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,5000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,5000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,5000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox7_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox8&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,10000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,10000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,10000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,10000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,10000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,10000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohCheckBox8_MacroOnChecked" Comment="">
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox1&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox2&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox3&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox4&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox5&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox6&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohCheckBox7&quot;,&quot;Checked&quot;,&quot;false&quot;);</Code>
+                        <Code>W_REG(8130,50000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8131,50000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8132,50000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>W_REG(8224,50000); /* 寫入X軸增量移動距離 */</Code>
+                        <Code>W_REG(8225,50000); /* 寫入Y軸增量移動距離 */</Code>
+                        <Code>W_REG(8226,50000); /* 寫入Z軸增量移動距離 */</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohDisplayLabel1_MacroOnClick" Comment="">
+                        <Code>;寸動模式</Code>
+                        <Code>IF(R_REG_BIT(352,3)==1)</Code>
+                        <Code> IF(R_REG(1356400)==0)</Code>
+                        <Code>  W_REG(1356400,1);</Code>
+                        <Code> ELSE</Code>
+                        <Code>  W_REG(1356400,0);</Code>
+                        <Code> END_IF</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohLabel27_MacroOnClick" Comment="">
+                        <Code>W_REG(1356400,0);</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohLabel28_MacroOnClick" Comment="">
+                        <Code>W_REG(1356400,1);</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohOnOffSwitch1_MacroOnWriteOFF" Comment="">
+                        <Code>W_REG(15,0);</Code>
+                        <Code>ret</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohOnOffSwitch1_MacroOnWriteON" Comment="">
+                        <Code>W_REG(15,1);</Code>
+                        <Code>ret</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohPageTimer1_MacroOnTimer" Comment="">
+                        <Code>W_REG_BIT(1022460, 17, 0);  關閉旗標</Code>
+                        <Code>#1=R_REG(22013);            路徑編號</Code>
+                        <Code>#2=#1*50;                   偏移R值</Code>
+                        <Code>#3=20000+#2;</Code>
+                        <Code>#4=20001+#2;</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMEM&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);      // 自動</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMDI&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);      // MDI</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPG&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);      // 手輪</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonJOG&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);      // 寸動</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonINCJOG&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);   // 增量寸動</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonZRN&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);      // 原點</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPGDRN&quot;,&quot;OutputNo&quot;,&quot;#4&quot;);   // 手輪模擬</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonSBK&quot;,&quot;OutputNo&quot;,&quot;#4&quot;);      // 單節</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonReset&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);    // 復位</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonStart&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);    // 啟動</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonPause&quot;,&quot;OutputNo&quot;,&quot;#3&quot;);    // 暫停</Code>
+                        <Code>#5=#1*200+15;</Code>
+                        <Code>#6=#1*500+9;</Code>
+                        <Code>#7=#1*500+3;</Code>
+                        <Code>#8=#1+1356400;</Code>
+                        <Code>#9=#1*50+6600;</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLedRectangle_ZRN&quot;,&quot;ActiveRefNo&quot;,&quot;#5&quot;);//原點</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLedRectangle_MPGDRY&quot;,&quot;ActiveRefNo&quot;,&quot;#6&quot;);//手輪</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLedRectangle_SBK&quot;,&quot;ActiveRefNo&quot;,&quot;#7&quot;);單節</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLedRectangle_Door&quot;,&quot;ActiveRefNo&quot;,&quot;#8&quot;);門板</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLedRectangle_Cabient&quot;,&quot;ActiveRefNo&quot;,&quot;#8&quot;);櫃體</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPanel_Function&quot;,&quot;HideRefNo&quot;,&quot;#9&quot;);功能表</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPanel_INCJOG&quot;,&quot;HideRefNo&quot;,&quot;#9&quot;);增量寸動表</Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohPageTimer_ButtonColor_MacroOnTimer" Comment="">
+                        <Code>#1=R_REG(22013);</Code>
+                        <Code></Code>
+                        <Code>;SBK按鍵顏色控制</Code>
+                        <Code>IF (1 == R_MLC_S(#1*500+3))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonSBK&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonSBK&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>;MPGDRN按鍵顏色控制</Code>
+                        <Code>IF (1 == R_MLC_S(#1*500+9))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPGDRN&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonMPGDRN&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>;啟動加工按鍵顏色控制</Code>
+                        <Code>IF (1 == R_MLC_S(#1*500+0))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonStart&quot;,&quot;Color&quot;,&quot;clLime&quot;);</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonStart&quot;,&quot;Color&quot;,&quot;clGreen&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>;程式暫停按鍵顏色控制</Code>
+                        <Code>IF (1 == R_MLC_S(#1*500+1))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonPause&quot;,&quot;Color&quot;,&quot;clRed&quot;);</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonPause&quot;,&quot;Color&quot;,&quot;clMaroon&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>;門板模式</Code>
+                        <Code>IF (0 == R_REG(#1+1356400))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonDoor&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonCabinet&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>ELSEIF(1 == R_REG(#1+1356400))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonDoor&quot;,&quot;Color&quot;,&quot;0x00D5D6DE&quot;);</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohButtonCabinet&quot;,&quot;Color&quot;,&quot;clYellow&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>;排序加工隱藏</Code>
+                        <Code>IF (0 == R_REG(1181393))</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PROCESS&quot;,&quot;Transparent&quot;,&quot;false&quot;);</Code>
+                        <Code>ELSE</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PROCESS&quot;,&quot;Transparent&quot;,&quot;true&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>/********************/</Code>
+                        <Code>;  // 模式切換對應動作</Code>
+                        <Code>IF(#1==0)</Code>
+                        <Code>  W_REG(1040001, -1);</Code>
+                        <Code>  FMACRO &quot;Macro_CNCMode_Change_1&quot;;</Code>
+                        <Code>ELSEIF(#1==1)</Code>
+                        <Code>  W_REG(1369002, -1);</Code>
+                        <Code>  FMACRO &quot;Macro_CNCMode_Change_2&quot;;</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>;/******************************/</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro_Private Name="QohFrame001_ohPageTimer_UpDown_MacroOnTimer" Comment="">
+                        <Code>;1=Home</Code>
+                        <Code>;2=Openfile</Code>
+                        <Code>;3=Edit</Code>
+                        <Code>;4=Usb</Code>
+                        <Code>;5=Mag</Code>
+                        <Code>;6=Setup</Code>
+                        <Code>;7=Atm</Code>
+                        <Code>;8=Process</Code>
+                        <Code>;9=Restart</Code>
+                        <Code>;10=User</Code>
+                        <Code>;11=Userparam</Code>
+                        <Code>;12=Param</Code>
+                        <Code>;13=Upgrade</Code>
+                        <Code>;14=Path</Code>
+                        <Code></Code>
+                        <Code>#1 = R_REG(1190002);  旗標R值</Code>
+                        <Code></Code>
+                        <Code>IF(#1==1)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_HMOE&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==2)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_OPENFILE&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==3)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_EDIT&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==4)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_USB&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==5)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_MAG&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==6)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_SETUP&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==7)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_ATM&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==8)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PROCESS&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==9)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_RESTART&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==10)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_USER&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==11)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_USERPARAM&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==12)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PARAM&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==13)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_UPGRADE&quot;,&quot;BorderStyle&quot;,&quot;bsNone&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF(#1==14)</Code>
+                        <Code>  SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_PATH&quot;,&quot;BorderStyle&quot;,&quot;false&quot;);</Code>
+                        <Code>END_IF</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 0);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;false&quot;);</Code>
+                        <Code></Code>
+                        <Code>RET</Code>
+                </Macro_Private>
+
+                <Macro Name="QSTD_FunctionMenuOnUpClick" Comment="[共用模組] 功能按鈕返回呼叫">
+                        <Code>SELECT [#1]</Code>
+                        <Code>CASE 1:</Code>
+                        <Code>  ;  // 模式 1 不使用 ViewPage</Code>
+                        <Code>CASE 2:</Code>
+                        <Code>  ;  // 模式 2 使用 sub=1</Code>
+                        <Code>  ACTION(&quot;ExecMenuButton,name=R[1022555,8],id=Rint[1022554,0],page=Rint[1022550,0],function=Rint[1022551,0],macro=Rint[1022552,0],sub=1&quot;);</Code>
+                        <Code>  RET;  // 不做事</Code>
+                        <Code>CASE_ELSE</Code>
+                        <Code>  ACTION(&quot;ViewSavePage&quot;); </Code>
+                        <Code>END_SELECT</Code>
+                        <Code>ACTION(&quot;ExecMenuButton,name=R[1022555,8],id=Rint[1022554,0],page=Rint[1022550,0],function=Rint[1022551,0],macro=Rint[1022552,0],sub=Rint[1022553,0]&quot;);</Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="QSTD_SaveCallBackMenu" Comment="[共用模組] 儲存返回按鈕">
+                        <Code>IF [R_REG(47640) &lt;= 160250]</Code>
+                        <Code>  MSG_OK(&quot;版本过旧&quot;,&quot;请升级内部人机软件版本&quot;,&quot;&quot;);</Code>
+                        <Code>  RET;  // 新版人機 版次檢查</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF [#1 == #0 || #1 == 0]</Code>
+                        <Code>  #1=0;</Code>
+                        <Code>ELSE</Code>
+                        <Code>  #1=1;</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF [#2 == #0 || #2 == 0]</Code>
+                        <Code>  #2=0;</Code>
+                        <Code>ELSE</Code>
+                        <Code>  #2=1;</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF [#3 == #0 || #3 == 0]</Code>
+                        <Code>  #3=0;</Code>
+                        <Code>ELSE</Code>
+                        <Code>  #3=1;</Code>
+                        <Code>END_IF</Code>
+                        <Code>IF [#4 == #0 || #4 == 0]</Code>
+                        <Code>  #4=0;</Code>
+                        <Code>ELSE</Code>
+                        <Code>  #4=1;</Code>
+                        <Code>END_IF</Code>
+                        <Code>W_REG(1022550,#1);  // page</Code>
+                        <Code>W_REG(1022551,#2);  // function</Code>
+                        <Code>W_REG(1022552,#3);  // macro</Code>
+                        <Code>W_REG(1022553,#4);  // sub</Code>
+                        <Code>ACTION(&quot;SaveMenuButton,nameR=RstrW[1022555,8],idR=RintW[1022554,0]&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // #1 : page</Code>
+                        <Code>;  // #2 : function</Code>
+                        <Code>;  // #3 : macro</Code>
+                        <Code>;  // #4 : sub</Code>
+                </Macro>
+
+                <Macro Name="Resatrt" Comment="程式再啟">
+                        <Code>FMACRO &quot;QSTD_SaveCallBackMenu&quot;;</Code>
+                        <Code>CHANGE_MENU_2(&quot;QSTD_ProgRestart&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code> W_REG(1190002, 9);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_RESTART&quot;,&quot;BorderStyle&quot;,&quot;QSTD_SaveCallBackMenu&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;QSTD_ProgRestart&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // 主專案頁面 主專案按鈕 (呼叫主專案 頁面按鈕)</Code>
+                </Macro>
+
+                <Macro Name="Setup" Comment="坐標系">
+                        <Code>SHOW_PAGE_2(&quot;QohFrame017&quot;,&quot;0&quot;);</Code>
+                        <Code>CHANGE_MENU_2(&quot;Setup&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code> W_REG(1190002, 6);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_SETUP&quot;,&quot;BorderStyle&quot;,&quot;Setup&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="UpGrade" Comment="系統更新">
+                        <Code>FMACRO &quot;QSTD_SaveCallBackMenu&quot;;</Code>
+                        <Code>CHANGE_MENU_2(&quot;QSTD_SysUpdate&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 13);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_UPGRADE&quot;,&quot;BorderStyle&quot;,&quot;QSTD_SaveCallBackMenu&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;QSTD_SysUpdate&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // 主專案頁面 主專案按鈕 (呼叫主專案 頁面按鈕)</Code>
+                </Macro>
+
+                <Macro Name="USB" Comment="U盤匯入">
+                        <Code>FMACRO &quot;QSTD_SaveCallBackMenu&quot;;</Code>
+                        <Code>CHANGE_MENU_2(&quot;QSTD_NCFilesUSBIMP&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 4);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_USB&quot;,&quot;BorderStyle&quot;,&quot;QSTD_SaveCallBackMenu&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;QSTD_NCFilesUSBIMP&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // 主專案頁面 主專案按鈕 (呼叫主專案 頁面按鈕)</Code>
+                </Macro>
+
+                <Macro Name="User" Comment="切換用戶">
+                        <Code>SHOW_PAGE(&quot;QFrameChangeUser01&quot;);</Code>
+                        <Code>CHANGE_MENU_2(&quot;Maintain&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 10);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_USER&quot;,&quot;BorderStyle&quot;,&quot;Maintain&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;0&quot;);</Code>
+                        <Code>RET</Code>
+                </Macro>
+
+                <Macro Name="Userparam" Comment="用戶參數">
+                        <Code>FMACRO &quot;QSTD_SaveCallBackMenu&quot;;</Code>
+                        <Code>CHANGE_MENU_2(&quot;QSTD_ParamPLC&quot;,&quot;0&quot;);</Code>
+                        <Code></Code>
+                        <Code>W_REG(1190002, 11);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohLabel_USERPARAM&quot;,&quot;BorderStyle&quot;,&quot;QSTD_SaveCallBackMenu&quot;);</Code>
+                        <Code>SET_PROPERTY(&quot;QohFrame001&quot;,&quot;ohPageTimer_UpDown&quot;,&quot;Enabled&quot;,&quot;QSTD_ParamPLC&quot;);</Code>
+                        <Code>RET</Code>
+                        <Code>;  // 主專案頁面 主專案按鈕 (呼叫主專案 頁面按鈕)</Code>
+                </Macro>
+
+        </MacroList>
+
+        <SystemHookKeyList>
+        </SystemHookKeyList>
+
+        <SystemIPointList>
+        </SystemIPointList>
+
+        <SystemTimerList>
+        </SystemTimerList>
+
+        <MenuFunctionKeyList>
+        </MenuFunctionKeyList>
+
+        <ShortcutList Enabled="false" BoolProp1="false">
+                <Shortcut Number="1" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="2" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="3" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="4" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="5" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="6" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="7" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="8" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="9" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="10" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="11" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="12" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="13" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="14" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="15" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="16" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+                <Shortcut Number="17" Comment="" Page="" Menu="" Macro="" Key="0" KeyModifier="kmNone"/>
+        </ShortcutList>
+
+        <HandlerList>
+        </HandlerList>
+
+        <SystemPopupMenuList>
+        </SystemPopupMenuList>
+
+        <OtherPageList>
+                <TohOtherPage
+                  Name="QFrameChangeUser01"
+                  Caption="身份变更"
+                />
+
+        </OtherPageList>
+
+        <FloatingPage>
+        </FloatingPage>
+
+        <QohFrame001
+          Height="168"
+          Width="1366"
+          Caption="V05"
+          FontBold="true"
+          FontHeight="fh16"
+          FontHeightCustom="16"
+          MacroOnLoaded="QohFrame001_MacroOnLoaded"
+        >
+                <QohImage
+                  Name="ohImage1"
+                  Height="40"
+                  Left="130"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="openfile.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage2"
+                  Height="40"
+                  Left="320"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="usb.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage4"
+                  Height="40"
+                  Left="415"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="file.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage5"
+                  Height="40"
+                  Left="707"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="process.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage3"
+                  Height="40"
+                  Left="225"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="edit.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage6"
+                  Height="40"
+                  Left="510"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="tool.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage7"
+                  Height="40"
+                  Left="613"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="atm.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage11"
+                  Height="40"
+                  Left="1102"
+                  Top="8"
+                  Width="40"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  Center="true"
+                  FileName="param.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage12"
+                  Height="40"
+                  Left="35"
+                  Top="10"
+                  Width="40"
+                  Center="true"
+                  FileName="home.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage10"
+                  Height="40"
+                  Left="898"
+                  Top="10"
+                  Width="40"
+                  Center="true"
+                  FileName="user.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage13"
+                  Height="40"
+                  Left="1008"
+                  Top="8"
+                  Width="40"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  Center="true"
+                  FileName="userparam.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage14"
+                  Height="40"
+                  Left="802"
+                  Top="8"
+                  Width="40"
+                  Center="true"
+                  FileName="restart.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage15"
+                  Height="40"
+                  Left="1194"
+                  Top="8"
+                  Width="40"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  Center="true"
+                  FileName="upgrade.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohImage
+                  Name="ohImage16"
+                  Height="40"
+                  Left="1290"
+                  Top="8"
+                  Width="40"
+                  HideCondition="ccImmediate"
+                  HideRefNo="69000"
+                  HideRefValue="1"
+                  Center="true"
+                  FileName="path.png"
+                  Stretch="true"
+                >
+                </QohImage>
+
+                <QohPanel
+                  Name="ohPanel_INCJOG"
+                  Height="88"
+                  Left="586"
+                  Top="79"
+                  Width="383"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  HideCondition="ccUnequal"
+                  HideRefNo="6600"
+                  HideRefValue="5"
+                  FocusOrder="3"
+                >
+                        <QohCheckBox
+                          Name="ohCheckBox1"
+                          Height="31"
+                          Left="7"
+                          Top="24"
+                          Width="101"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="0.001mm"
+                          Checked="true"
+                          MacroOnChecked="QohFrame001_ohCheckBox1_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox2"
+                          Height="31"
+                          Left="103"
+                          Top="24"
+                          Width="101"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="0.01mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox2_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox3"
+                          Height="31"
+                          Left="199"
+                          Top="24"
+                          Width="101"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="0.1mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox3_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox4"
+                          Height="31"
+                          Left="295"
+                          Top="24"
+                          Width="77"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="0.5mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox4_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox5"
+                          Height="31"
+                          Left="7"
+                          Top="53"
+                          Width="101"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="1mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox5_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox6"
+                          Height="31"
+                          Left="103"
+                          Top="53"
+                          Width="101"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="5mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox6_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox7"
+                          Height="31"
+                          Left="199"
+                          Top="53"
+                          Width="101"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="10mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox7_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohCheckBox
+                          Name="ohCheckBox8"
+                          Height="31"
+                          Left="295"
+                          Top="53"
+                          Width="70"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Caption="50mm"
+                          MacroOnChecked="QohFrame001_ohCheckBox8_MacroOnChecked"
+                        >
+                        </QohCheckBox>
+
+                        <QohLabel
+                          Name="ohLabel13"
+                          Height="22"
+                          Left="2"
+                          Top="1"
+                          Width="380"
+                          BorderStyle="bsNone"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          Alignment="taCenter"
+                          Caption="增量寸动长度设定"
+                        >
+                        </QohLabel>
+
+                </QohPanel>
+
+                <QohPanel
+                  Name="ohPanel_Action"
+                  Height="88"
+                  Left="979"
+                  Top="79"
+                  Width="380"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  FocusOrder="2"
+                >
+                        <QohButton
+                          Name="ohButtonReset"
+                          Height="83"
+                          Left="3"
+                          Top="2"
+                          Width="120"
+                          DownColor="clYellow"
+                          Caption="复位"
+                          FontBold="false"
+                          FontHeight="fh20"
+                          FontHeightCustom="16"
+                          ParentFont="false"
+                          OutputNo="20000"
+                          OutputRBit="1"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonStart"
+                          Height="83"
+                          Left="130"
+                          Top="2"
+                          Width="120"
+                          Color="clGreen"
+                          DownColor="clLime"
+                          Caption="启动加工"
+                          FontBold="false"
+                          FontHeight="fh20"
+                          FontHeightCustom="16"
+                          ParentFont="false"
+                          OutputNo="20000"
+                          OutputRBit="11"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonPause"
+                          Height="83"
+                          Left="257"
+                          Top="2"
+                          Width="120"
+                          Color="clMaroon"
+                          DownColor="clRed"
+                          Caption="程序暂停"
+                          FontBold="false"
+                          FontHeight="fh20"
+                          FontHeightCustom="16"
+                          ParentFont="false"
+                          OutputNo="20000"
+                          OutputRBit="12"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                        >
+                        </QohButton>
+
+                </QohPanel>
+
+                <QohPanel
+                  Name="ohPanel_Function"
+                  Height="88"
+                  Left="586"
+                  Top="79"
+                  Width="380"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  HideCondition="ccEqual"
+                  HideRefNo="6600"
+                  HideRefValue="5"
+                  FocusOrder="1"
+                >
+                        <QohButton
+                          Name="ohButtonMPGDRN"
+                          Height="83"
+                          Left="2"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20001"
+                          OutputRBit="4"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="mpgdrn.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonSBK"
+                          Height="83"
+                          Left="97"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20001"
+                          OutputRBit="1"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="sbk.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonDoor"
+                          Height="83"
+                          Left="192"
+                          Top="2"
+                          Width="90"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          MacroOnButtonClick="QohFrame001_ohButtonDoor_MacroOnButtonClick"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonCabinet"
+                          Height="83"
+                          Left="287"
+                          Top="2"
+                          Width="90"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          MacroOnButtonClick="QohFrame001_ohButtonCabinet_MacroOnButtonClick"
+                        >
+                        </QohButton>
+
+                        <QohImage
+                          Name="ohImage8"
+                          Height="40"
+                          Left="217"
+                          Top="23"
+                          Width="40"
+                          Center="true"
+                          FileName="door.png"
+                          Stretch="true"
+                          IgnoreMouse="true"
+                        >
+                        </QohImage>
+
+                        <QohImage
+                          Name="ohImage9"
+                          Height="40"
+                          Left="312"
+                          Top="23"
+                          Width="40"
+                          Center="true"
+                          FileName="cabinet.png"
+                          Stretch="true"
+                          IgnoreMouse="true"
+                        >
+                        </QohImage>
+
+                        <QohLedRectangle
+                          Name="ohLedRectangle_MPGDRY"
+                          Height="19"
+                          Left="2"
+                          Top="2"
+                          Width="19"
+                          CenterLabelFontBold="true"
+                          CenterLabelFontHeight="fh16"
+                          ActiveCondition="ccEqual"
+                          ActiveRefNo="9"
+                          ActiveRefType="rtS"
+                          ActiveRefValue="1"
+                        >
+                        </QohLedRectangle>
+
+                        <QohLedRectangle
+                          Name="ohLedRectangle_SBK"
+                          Height="19"
+                          Left="97"
+                          Top="2"
+                          Width="19"
+                          CenterLabelFontBold="true"
+                          CenterLabelFontHeight="fh16"
+                          ActiveCondition="ccEqual"
+                          ActiveRefNo="3"
+                          ActiveRefType="rtS"
+                          ActiveRefValue="1"
+                        >
+                        </QohLedRectangle>
+
+                        <QohLabel
+                          Name="ohLabel10"
+                          Height="20"
+                          Left="2"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="手轮模拟"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel65"
+                          Height="20"
+                          Left="97"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="单节执行"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLedRectangle
+                          Name="ohLedRectangle_Door"
+                          Height="19"
+                          Left="192"
+                          Top="2"
+                          Width="19"
+                          CenterLabelFontBold="true"
+                          CenterLabelFontHeight="fh16"
+                          ActiveCondition="ccEqual"
+                          ActiveRefNo="1356400"
+                        >
+                        </QohLedRectangle>
+
+                        <QohLedRectangle
+                          Name="ohLedRectangle_Cabient"
+                          Height="19"
+                          Left="287"
+                          Top="2"
+                          Width="19"
+                          CenterLabelFontBold="true"
+                          CenterLabelFontHeight="fh16"
+                          ActiveCondition="ccEqual"
+                          ActiveRefNo="1356400"
+                          ActiveRefValue="1"
+                        >
+                        </QohLedRectangle>
+
+                        <QohLabel
+                          Name="ohLabel19"
+                          Height="20"
+                          Left="287"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="柜体模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel20"
+                          Height="20"
+                          Left="192"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="0x00D5D6DE"
+                          FontColor="clBlack"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="门板模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                </QohPanel>
+
+                <QohLedRound
+                  Name="ohLedRound1"
+                  Height="30"
+                  Left="16"
+                  Top="295"
+                  Width="30"
+                  InactiveColor="0x00004000"
+                  ActiveCondition="ccEqual"
+                  ActiveRefNo="9"
+                  ActiveRefType="rtA"
+                  ActiveRefValue="1"
+                >
+                </QohLedRound>
+
+                <QohLabel
+                  Name="ohLabel1"
+                  Height="22"
+                  Left="50"
+                  Top="298"
+                  Width="96"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh20"
+                  FontHeightCustom="16"
+                  ParentFont="false"
+                  Caption="系统完成"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel2"
+                  Height="22"
+                  Left="190"
+                  Top="298"
+                  Width="96"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh20"
+                  FontHeightCustom="16"
+                  ParentFont="false"
+                  Caption="原点完成"
+                >
+                </QohLabel>
+
+                <QohLedRound
+                  Name="ohLedRound2"
+                  Height="30"
+                  Left="156"
+                  Top="295"
+                  Width="30"
+                  InactiveColor="0x00004000"
+                  ActiveCondition="ccEqual"
+                  ActiveRefNo="15"
+                  ActiveRefType="rtA"
+                  ActiveRefValue="1"
+                >
+                </QohLedRound>
+
+                <QohLabel
+                  Name="ohLabel3"
+                  Height="22"
+                  Left="330"
+                  Top="298"
+                  Width="96"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh20"
+                  FontHeightCustom="16"
+                  ParentFont="false"
+                  Caption="系统警报"
+                >
+                </QohLabel>
+
+                <QohLedRound
+                  Name="ohLedRound3"
+                  Height="30"
+                  Left="296"
+                  Top="295"
+                  Width="30"
+                  ActiveColor="clRed"
+                  InactiveColor="0x00000040"
+                  ActiveCondition="ccEqual"
+                  ActiveRefNo="6"
+                  ActiveRefType="rtA"
+                  ActiveRefValue="1"
+                >
+                </QohLedRound>
+
+                <QohDisplayLabel
+                  Name="ohDisplayLabel1"
+                  Height="38"
+                  Left="21"
+                  Top="343"
+                  Width="125"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Alignment="taCenter"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  RefNo="1356400"
+                  RefUnit="0"
+                  MacroOnClick="QohFrame001_ohDisplayLabel1_MacroOnClick"
+                >
+                </QohDisplayLabel>
+
+                <QohLabel
+                  Name="ohLabel4"
+                  Height="20"
+                  Left="105"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="开启档案"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel5"
+                  Height="20"
+                  Left="295"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="U盘汇入"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel6"
+                  Height="20"
+                  Left="390"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="档案管理"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel7"
+                  Height="20"
+                  Left="682"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="排序加工"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel8"
+                  Height="20"
+                  Left="200"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="程序编辑"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel9"
+                  Height="20"
+                  Left="485"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="刀补坐标系"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel11"
+                  Height="20"
+                  Left="588"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="自动对刀"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_OPENFILE"
+                  Height="78"
+                  Left="105"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Openfile"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_USB"
+                  Height="78"
+                  Left="295"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="USB"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_MAG"
+                  Height="78"
+                  Left="390"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="FileMAG"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_PROCESS"
+                  Height="78"
+                  Left="682"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Process"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_EDIT"
+                  Height="78"
+                  Left="200"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Edit"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_SETUP"
+                  Height="78"
+                  Left="485"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Setup"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_ATM"
+                  Height="78"
+                  Left="588"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Atm"
+                >
+                </QohLabel>
+
+                <QohPanel
+                  Name="ohPanel_Mode"
+                  Height="88"
+                  Left="8"
+                  Top="79"
+                  Width="570"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  FocusOrder="0"
+                >
+                        <QohButton
+                          Name="ohButtonINCJOG"
+                          Height="83"
+                          Left="382"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20000"
+                          OutputRBit="9"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="incjog.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonMEM"
+                          Height="83"
+                          Left="2"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20000"
+                          OutputRBit="5"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="mem.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonMDI"
+                          Height="83"
+                          Left="97"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20000"
+                          OutputRBit="6"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="mdi.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonMPG"
+                          Height="83"
+                          Left="192"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20000"
+                          OutputRBit="10"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="mpg.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonJOG"
+                          Height="83"
+                          Left="287"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20000"
+                          OutputRBit="8"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="jog.png"
+                        >
+                        </QohButton>
+
+                        <QohButton
+                          Name="ohButtonZRN"
+                          Height="83"
+                          Left="477"
+                          Top="2"
+                          Width="90"
+                          DownColor="clYellow"
+                          FontBold="true"
+                          FontHeight="fh16"
+                          FontHeightCustom="16"
+                          OutputNo="20000"
+                          OutputRBit="7"
+                          OutputTiming="botUpDown"
+                          OutputType="otR"
+                          GlyphFileName="zrn.png"
+                        >
+                        </QohButton>
+
+                        <QohLabel
+                          Name="ohLabel12"
+                          Height="20"
+                          Left="382"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="增量寸动"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel69"
+                          Height="20"
+                          Left="2"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="自动模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel70"
+                          Height="20"
+                          Left="97"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="MDI模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel71"
+                          Height="20"
+                          Left="192"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="手轮模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel72"
+                          Height="20"
+                          Left="287"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="寸动模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLabel
+                          Name="ohLabel73"
+                          Height="20"
+                          Left="477"
+                          Top="65"
+                          Width="90"
+                          BorderStyle="bsNone"
+                          Color="clWhite"
+                          FontColor="clBlack"
+                          ParentColor="false"
+                          Transparent="true"
+                          FontBold="false"
+                          FontHeight="fh16"
+                          FontHeightCustom="15"
+                          ParentFont="false"
+                          Alignment="taCenter"
+                          Caption="原点模式"
+                          IgnoreMouse="true"
+                        >
+                        </QohLabel>
+
+                        <QohLedRectangle
+                          Name="ohLedRectangle_ZRN"
+                          Height="19"
+                          Left="477"
+                          Top="2"
+                          Width="19"
+                          CenterLabelFontBold="true"
+                          CenterLabelFontHeight="fh16"
+                          ActiveCondition="ccEqual"
+                          ActiveRefNo="15"
+                          ActiveRefType="rtA"
+                          ActiveRefValue="1"
+                        >
+                        </QohLedRectangle>
+
+                </QohPanel>
+
+                <QohLabel
+                  Name="ohLabel16"
+                  Height="20"
+                  Left="1077"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  Alignment="taCenter"
+                  Caption="调机参数"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_PARAM"
+                  Height="78"
+                  Left="1077"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  MacroOnClick="Param"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel17"
+                  Height="20"
+                  Left="10"
+                  Top="54"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="首页"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel15"
+                  Height="20"
+                  Left="873"
+                  Top="54"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="用户切换"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_USER"
+                  Height="78"
+                  Left="873"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="User"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_HMOE"
+                  Height="78"
+                  Left="10"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Home"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel14"
+                  Height="20"
+                  Left="983"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  Alignment="taCenter"
+                  Caption="用户参数"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_USERPARAM"
+                  Height="78"
+                  Left="983"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  MacroOnClick="Userparam"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel28"
+                  Height="20"
+                  Left="777"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  Alignment="taCenter"
+                  Caption="程序再启"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_RESTART"
+                  Height="78"
+                  Left="777"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  MacroOnClick="Resatrt"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_UPGRADE"
+                  Height="78"
+                  Left="1169"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  MacroOnClick="UpGrade"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel34"
+                  Height="20"
+                  Left="1169"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  HideCondition="ccLess"
+                  HideRefNo="1020062"
+                  HideRefValue="4"
+                  Alignment="taCenter"
+                  Caption="系统更新"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel_PATH"
+                  Height="78"
+                  Left="1265"
+                  Top="0"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="0x00D5D6DE"
+                  FontColor="clBlack"
+                  Transparent="true"
+                  FontBold="true"
+                  FontHeight="fh16"
+                  FontHeightCustom="16"
+                  HideCondition="ccImmediate"
+                  HideRefNo="69000"
+                  HideRefValue="1"
+                  MacroOnClick="Path"
+                >
+                </QohLabel>
+
+                <QohLabel
+                  Name="ohLabel21"
+                  Height="20"
+                  Left="1265"
+                  Top="52"
+                  Width="90"
+                  BorderStyle="bsNone"
+                  Color="clWhite"
+                  FontColor="clBlack"
+                  ParentColor="false"
+                  Transparent="true"
+                  FontBold="false"
+                  FontHeight="fh16"
+                  FontHeightCustom="15"
+                  ParentFont="false"
+                  HideCondition="ccImmediate"
+                  HideRefNo="69000"
+                  HideRefValue="1"
+                  Alignment="taCenter"
+                  Caption="路径切换"
+                  IgnoreMouse="true"
+                >
+                </QohLabel>
+
+                <QohPageTimer
+                  Name="ohPageTimer_ButtonColor"
+                  Left="1265"
+                  Top="103"
+                  Comment="選單顏色控制TM"
+                  Interval="500"
+                  MacroOnTimer="QohFrame001_ohPageTimer_ButtonColor_MacroOnTimer"
+                >
+                </QohPageTimer>
+
+                <QohPageTimer
+                  Name="ohPageTimer_UpDown"
+                  Left="1306"
+                  Top="103"
+                  Enabled="false"
+                  Interval="500"
+                  MacroOnTimer="QohFrame001_ohPageTimer_UpDown_MacroOnTimer"
+                >
+                </QohPageTimer>
+
+                <QohPageTimer
+                  Name="ohPageTimer1"
+                  Left="4"
+                  Top="4"
+                  Enabled="false"
+                  EnabledRBit="1"
+                  EnabledRNo="1022464"
+                  Interval="1"
+                  MacroOnTimer="QohFrame001_ohPageTimer1_MacroOnTimer"
+                >
+                </QohPageTimer>
+
+        </QohFrame001>
+
+        <MenuList>
+                <TohMenuBar
+                  DisableRefFrameAuthority="true"
+                  MenuDisablePriority="mdpPage"
+                >
+                        <TohFirstBar
+                        >
+                        </TohFirstBar>
+
+                        <TohSecondBar
+                        >
+                        </TohSecondBar>
+
+                        <TohMenuButtonMain
+                          HotKeyFontColor="0x007F55AA"
+                          HotKeyFontHeight="fh16"
+                          HotKeyFontHeightCustom="16"
+                          HotKeyOverlapCaption="true"
+                        >
+                        </TohMenuButtonMain>
+
+                        <TohMenuButtonUpper
+                          Caption="^"
+                        >
+                        </TohMenuButtonUpper>
+
+                        <TohMenuButtonNext
+                          Caption="&gt;"
+                        >
+                        </TohMenuButtonNext>
+
+                        <TohRootMenu
+                        >
+                        </TohRootMenu>
+
+                        <TohRootMenu
+                        >
+                        </TohRootMenu>
+
+                </TohMenuBar>
+
+        </MenuList>
+
+</OpenHMI>
