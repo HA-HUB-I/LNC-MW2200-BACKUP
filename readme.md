@@ -103,5 +103,23 @@ To restore the configuration files to the LNC MW2200A CNC controller using a USB
 
 ![Backup and Restore](backup_restore.jpg)
 
+## Modbus TCP Web Interface
+
+A Python/Flask web dashboard that communicates with the LNC controller over
+its built-in Modbus TCP server (port 502). It shows real-time machine status,
+axis positions, spindle/feed data and lot counters, and lets operators issue
+commands from any browser on the local network.
+
+See **[modbus_web/README.md](modbus_web/README.md)** for full setup and usage instructions.
+
+```bash
+cd modbus_web
+pip install -r requirements.txt
+MODBUS_HOST=<controller-ip> python app.py
+# then open http://localhost:5000
+```
+
+![Modbus Dashboard](https://github.com/user-attachments/assets/9760c33b-bb0e-4932-a6a5-723ccc3b055f)
+
 [Telegram Group](https://t.me/lnc_mw2200a)
 [YouTube Channel](https://www.youtube.com/@lnc_mw2200a)
