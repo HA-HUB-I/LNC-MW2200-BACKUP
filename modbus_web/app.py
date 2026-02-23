@@ -27,6 +27,17 @@ Register map (LNC Modbus TCP, holding registers, 0-based addresses):
   Packets responded    – R[5007] (PkgRspAddr=5008)
   Exception packets    – R[5008] (PkgExcptionAddr=5009)
 
+  Stopper/locator registers (32-bit PLC R-registers, exposed as 2×16-bit lo/hi pairs):
+  HMI→PLC command  – R[20104] lo=addr 20104, hi=addr 20105
+  PLC→HMI status   – R[20204] lo=addr 20204, hi=addr 20205
+    bit 17 – FORWARD POS (front stopper)
+    bit 18 – LEFT POS
+    bit 19 – RIGHT POS
+    bit 20 – LATERAL PUSH
+    bit 21 – PUSH BACK
+    bit 22 – TOP ADSORPTION (vacuum suction top)
+    bit 23 – SUCTION DAMAGE
+
 Status word bit map:
   bit 0 – Emergency Stop active
   bit 1 – Alarm active
@@ -43,9 +54,10 @@ Coil map (discrete outputs, 0-based):
   coil 2 – Reset / Clear Alarm
   coil 3 – Spindle CW
   coil 4 – Spindle CCW
-  coil 5 – Coolant ON
+  coil 5 – Vacuum Pump 1 ON (labelled "Coolant" in generic LNC firmware)
   coil 6 – E-Stop (write 1 to trigger software E-Stop)
   coil 7 – Lot Reset (write 1 to reset lot counter)
+  coil 8 – Aspiration / Vacuum Cleaner ON
 """
 
 import os
@@ -107,9 +119,10 @@ COIL_FEED_HOLD = 1
 COIL_RESET = 2
 COIL_SPINDLE_CW = 3
 COIL_SPINDLE_CCW = 4
-COIL_COOLANT = 5
+COIL_VACUUM_PUMP = 5    # Vacuum Pump 1 (labelled "Coolant" in generic LNC firmware)
 COIL_ESTOP = 6
 COIL_LOT_RESET = 7
+COIL_ASPIRATION = 8     # Aspiration / Vacuum Cleaner – address is UNVERIFIED; confirm with /api/scan on the actual machine
 
 # Allowed coil commands exposed to the API
 ALLOWED_COMMANDS = {
@@ -118,9 +131,33 @@ ALLOWED_COMMANDS = {
     "reset": COIL_RESET,
     "spindle_cw": COIL_SPINDLE_CW,
     "spindle_ccw": COIL_SPINDLE_CCW,
-    "coolant": COIL_COOLANT,
+    "vacuum_pump": COIL_VACUUM_PUMP,
     "estop": COIL_ESTOP,
     "lot_reset": COIL_LOT_RESET,
+    "aspiration": COIL_ASPIRATION,
+}
+
+# ---------------------------------------------------------------------------
+# Stopper / locator registers (32-bit PLC R-registers).
+# Each 32-bit R register is exposed as a pair of 16-bit Modbus holding registers
+# (lo word at the base address, hi word at base+1).
+# ---------------------------------------------------------------------------
+# HMI→PLC command register: writing a bit here commands the stopper
+REG_STOPPER_CMD_LO = 20104   # low  word of R20104
+REG_STOPPER_CMD_HI = 20105   # high word of R20104
+
+# PLC→HMI status register: reading bits here shows actual stopper state
+REG_STOPPER_STS_LO = 20204   # low  word of R20204
+REG_STOPPER_STS_HI = 20205   # high word of R20204
+
+# Bit positions within R20104 / R20204 (0-based, 32-bit register)
+BIT_FORWARD_POS = 17   # FORWARD POS – front stopper   (FRONT POS)
+BIT_LEFT_POS    = 18   # LEFT POS    – left  stopper
+
+# Allowlist for the /api/stopper endpoint
+STOPPER_BIT_MAP = {
+    "forward_pos": BIT_FORWARD_POS,
+    "left_pos":    BIT_LEFT_POS,
 }
 
 
@@ -161,6 +198,10 @@ class MachineState:
     spindle_running: bool = False
     program_paused: bool = False
     door_open: bool = False
+
+    # Stopper / locator positions (read from R20204, PLC→HMI)
+    forward_pos: bool = False   # FORWARD POS – front stopper active
+    left_pos: bool = False      # LEFT POS    – left  stopper active
 
     def decode_status_word(self) -> None:
         sw = self.status_word
@@ -230,6 +271,16 @@ class ModbusPoller(threading.Thread):
             else:
                 diag = rr_diag.registers
 
+            # Read stopper status register R20204 (PLC→HMI, 32-bit = 2×16-bit lo/hi)
+            stopper_word = 0
+            rr_stopper = self._client.read_holding_registers(
+                address=REG_STOPPER_STS_LO, count=2, device_id=MODBUS_UNIT
+            )
+            if not rr_stopper.isError():
+                lo = rr_stopper.registers[0]
+                hi = rr_stopper.registers[1]
+                stopper_word = (hi << 16) | (lo & 0xFFFF)
+
             # Cycle-time tracking (computed from the cycle_running status bit)
             now = time.time()
             cycle_running_now = bool(regs[REG_STATUS] & (1 << 2))
@@ -265,6 +316,8 @@ class ModbusPoller(threading.Thread):
                 _state.total_cycle_time_s   = self._total_cycle_s + current_cycle_s
                 _state.last_update = now
                 _state.decode_status_word()
+                _state.forward_pos = bool(stopper_word & (1 << BIT_FORWARD_POS))
+                _state.left_pos    = bool(stopper_word & (1 << BIT_LEFT_POS))
 
         except Exception as exc:  # noqa: BLE001
             with _state_lock:
@@ -341,6 +394,60 @@ def api_command():
     return jsonify({"ok": True, "command": command, "value": value})
 
 
+@app.route("/api/stopper", methods=["POST"])
+def api_stopper():
+    """
+    Toggle a stopper/locator bit in R20104 (HMI→PLC) via read-modify-write.
+    Body: { "stopper": "forward_pos"|"left_pos", "value": true|false }
+    Reads the current 32-bit value of R20104, sets or clears the requested bit,
+    then writes the modified value back.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    stopper = body.get("stopper", "")
+    value = bool(body.get("value", True))
+
+    if stopper not in STOPPER_BIT_MAP:
+        abort(400, description=f"Unknown stopper '{stopper}'. "
+              f"Allowed: {list(STOPPER_BIT_MAP)}")
+
+    bit_pos = STOPPER_BIT_MAP[stopper]
+    client = ModbusTcpClient(host=MODBUS_HOST, port=MODBUS_PORT)
+    try:
+        if not client.connect():
+            abort(503, description="Cannot connect to Modbus server")
+
+        # Read current 32-bit value of R20104 (lo=20104, hi=20105)
+        rr = client.read_holding_registers(
+            address=REG_STOPPER_CMD_LO, count=2, device_id=MODBUS_UNIT
+        )
+        if rr.isError():
+            abort(502, description=f"Modbus read error: {rr}")
+
+        lo, hi = rr.registers[0], rr.registers[1]
+        combined = (hi << 16) | (lo & 0xFFFF)
+
+        # Set or clear the target bit
+        if value:
+            combined |= (1 << bit_pos)
+        else:
+            combined &= ~(1 << bit_pos)
+
+        new_lo = combined & 0xFFFF
+        new_hi = (combined >> 16) & 0xFFFF
+
+        result = client.write_registers(
+            REG_STOPPER_CMD_LO, [new_lo, new_hi], device_id=MODBUS_UNIT
+        )
+        if result.isError():
+            abort(502, description=f"Modbus write error: {result}")
+    except ModbusException as exc:
+        abort(502, description=str(exc))
+    finally:
+        client.close()
+
+    return jsonify({"ok": True, "stopper": stopper, "value": value})
+
+
 @app.route("/api/diagnostics")
 def api_diagnostics():
     """
@@ -378,6 +485,10 @@ def api_diagnostics():
             {"address": REG_PKG_OTHER,     "description": "Packets received from client (PkgOtherAddr=5007)"},
             {"address": REG_PKG_RSP,       "description": "Packets responded (PkgRspAddr=5008)"},
             {"address": REG_PKG_EXCEPTION, "description": "Exception (error) packets (PkgExcptionAddr=5009)"},
+            {"address": REG_STOPPER_CMD_LO, "description": "Stopper command – R20104 low word  (HMI→PLC, bit 17=FORWARD, 18=LEFT, …)"},
+            {"address": REG_STOPPER_CMD_HI, "description": "Stopper command – R20104 high word"},
+            {"address": REG_STOPPER_STS_LO, "description": "Stopper status  – R20204 low word  (PLC→HMI, same bit map)"},
+            {"address": REG_STOPPER_STS_HI, "description": "Stopper status  – R20204 high word"},
         ],
         "coils": [
             {"address": COIL_CYCLE_START, "name": "cycle_start",  "description": "Cycle Start"},
@@ -385,9 +496,10 @@ def api_diagnostics():
             {"address": COIL_RESET,       "name": "reset",        "description": "Reset / Clear Alarm"},
             {"address": COIL_SPINDLE_CW,  "name": "spindle_cw",   "description": "Spindle CW"},
             {"address": COIL_SPINDLE_CCW, "name": "spindle_ccw",  "description": "Spindle CCW"},
-            {"address": COIL_COOLANT,     "name": "coolant",      "description": "Coolant ON"},
+            {"address": COIL_VACUUM_PUMP, "name": "vacuum_pump",  "description": "Vacuum Pump 1 ON (Coolant coil in generic LNC firmware)"},
             {"address": COIL_ESTOP,       "name": "estop",        "description": "Software E-Stop"},
             {"address": COIL_LOT_RESET,   "name": "lot_reset",    "description": "Lot Reset"},
+            {"address": COIL_ASPIRATION,  "name": "aspiration",   "description": "Aspiration / Vacuum Cleaner ON – coil address unverified, confirm with /api/scan"},
         ],
         "status_bits": [
             {"bit": 0, "description": "Emergency Stop active"},
@@ -398,6 +510,10 @@ def api_diagnostics():
             {"bit": 5, "description": "Spindle running"},
             {"bit": 6, "description": "Program paused"},
             {"bit": 7, "description": "Door open"},
+        ],
+        "stopper_bits": [
+            {"register": "R20104/R20204", "bit": BIT_FORWARD_POS, "name": "forward_pos", "description": "FORWARD POS – front stopper"},
+            {"register": "R20104/R20204", "bit": BIT_LEFT_POS,    "name": "left_pos",    "description": "LEFT POS – left stopper"},
         ],
     }
 
@@ -424,6 +540,9 @@ def api_diagnostics():
             "Use /api/scan to read raw register values and verify the endpoint mapping",
             "Cycle time and total session machining time are computed by the web app from the cycle_running status bit – they reset when the web server restarts",
             "idle_time_s (R[5001]) is the Modbus connection idle counter from the controller, not total machine uptime",
+            "Stopper status is read from R20204 (PLC→HMI), command written to R20104 (HMI→PLC) via /api/stopper",
+            "Coil 5 (vacuum_pump) controls Vacuum Pump 1 – labelled 'Coolant' in the generic LNC firmware",
+            "Coil 8 (aspiration) address is unverified – use /api/scan to confirm it responds before relying on it",
         ],
     })
 
@@ -516,23 +635,24 @@ def api_scan():
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Diagnostic regs exception: {exc}")
 
-        # --- Coils 0–7 ---
+        # --- Coils 0–8 ---
         _coil_desc = {
             0: "Cycle Start",
             1: "Feed Hold",
             2: "Reset / Clear Alarm",
             3: "Spindle CW",
             4: "Spindle CCW",
-            5: "Coolant ON",
+            5: "Vacuum Pump 1 ON",
             6: "Software E-Stop",
             7: "Lot Reset",
+            8: "Aspiration / Vacuum Cleaner ON",
         }
         try:
-            rc = client.read_coils(address=0, count=8, device_id=MODBUS_UNIT)
+            rc = client.read_coils(address=0, count=9, device_id=MODBUS_UNIT)
             if rc.isError():
-                results["errors"].append(f"Coils 0-7 error: {rc}")
+                results["errors"].append(f"Coils 0-8 error: {rc}")
             else:
-                for i, val in enumerate(rc.bits[:8]):
+                for i, val in enumerate(rc.bits[:9]):
                     results["scans"].append({
                         "type": "coil",
                         "address": i,
@@ -541,7 +661,36 @@ def api_scan():
                         "hex": "",
                     })
         except Exception as exc:  # noqa: BLE001
-            results["errors"].append(f"Coils 0-7 exception: {exc}")
+            results["errors"].append(f"Coils 0-8 exception: {exc}")
+
+        # --- Stopper status registers R20204 (PLC→HMI, 2×16-bit = 32-bit) ---
+        try:
+            rr = client.read_holding_registers(
+                address=REG_STOPPER_STS_LO, count=2, device_id=MODBUS_UNIT
+            )
+            if rr.isError():
+                results["errors"].append(f"Stopper status regs {REG_STOPPER_STS_LO}-{REG_STOPPER_STS_HI} error: {rr}")
+            else:
+                lo, hi = rr.registers[0], rr.registers[1]
+                combined = (hi << 16) | (lo & 0xFFFF)
+                for addr, desc in [(REG_STOPPER_STS_LO, "Stopper status – R20204 low word"),
+                                   (REG_STOPPER_STS_HI, "Stopper status – R20204 high word")]:
+                    results["scans"].append({
+                        "type": "holding_register",
+                        "address": addr,
+                        "description": desc,
+                        "raw_value": rr.registers[addr - REG_STOPPER_STS_LO],
+                        "hex": hex(rr.registers[addr - REG_STOPPER_STS_LO]),
+                    })
+                results["scans"].append({
+                    "type": "decoded",
+                    "address": f"R20204 (combined)",
+                    "description": f"FORWARD_POS(bit17)={bool(combined & (1<<17))} LEFT_POS(bit18)={bool(combined & (1<<18))}",
+                    "raw_value": combined,
+                    "hex": hex(combined & 0xFFFFFFFF),
+                })
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Stopper status regs exception: {exc}")
 
     except Exception as exc:  # noqa: BLE001
         results["errors"].append(f"Unexpected error during scan: {exc}")
