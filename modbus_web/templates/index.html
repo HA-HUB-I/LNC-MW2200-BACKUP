@@ -547,7 +547,13 @@
       Authentication: <strong style="color:var(--text)">none</strong> – Modbus TCP has no built-in auth.
       Enable Modbus TCP on the controller: <code>parameter 45010 = 1</code>.
     </p>
-    <button class="btn" style="width:auto;padding:.4rem 1rem" onclick="runScan()">🔍 Scan Registers</button>
+    <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+      <button class="btn" style="width:auto;padding:.4rem 1rem" onclick="runScan()">🔍 Scan Registers</button>
+      <label style="font-size:.72rem;color:var(--muted)">Unit ID override:
+        <input id="inp-scan-unit" type="number" min="0" max="255" placeholder="default"
+               style="width:5rem;background:#0f1117;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.25rem .4rem;font-size:.8rem;margin-left:.3rem" />
+      </label>
+    </div>
     <div id="scan-output">
       <table class="diag-table" id="scan-table">
         <thead><tr><th>Type</th><th>Address</th><th>Description</th><th>Raw Value</th><th>Hex</th></tr></thead>
@@ -635,7 +641,12 @@
       if (d.connected) {
         badge.className = 'connected';
         connText.textContent = 'Connected';
-        errBar.style.display = 'none';
+        if (!d.data_looks_valid) {
+          errBar.textContent = '⚠ Connected but all register values are 0 – possible wrong unit ID, wrong MODBUS_HOST, or machine is genuinely idle. Click "Scan Registers" below for diagnostics.';
+          errBar.style.display = 'block';
+        } else {
+          errBar.style.display = 'none';
+        }
       } else {
         badge.className = 'error';
         connText.textContent = 'Disconnected';
@@ -787,9 +798,11 @@
     const errDiv = document.getElementById('scan-errors');
     out.style.display = 'block';
     tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Scanning…</td></tr>';
-    errDiv.textContent = '';
+    errDiv.innerHTML = '';
+    const unitInput = document.getElementById('inp-scan-unit').value.trim();
+    const url = unitInput !== '' ? `/api/scan?unit_id=${encodeURIComponent(unitInput)}` : '/api/scan';
     try {
-      const res = await fetch('/api/scan');
+      const res = await fetch(url);
       const data = await res.json();
       tbody.innerHTML = '';
       for (const row of data.scans) {
@@ -800,9 +813,14 @@
       if (tbody.children.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">No registers read</td></tr>';
       }
+      let errHtml = '';
       if (data.errors && data.errors.length) {
-        errDiv.textContent = 'Errors: ' + data.errors.join(' | ');
+        errHtml += '<div style="color:var(--red)">Errors: ' + data.errors.join(' | ') + '</div>';
       }
+      if (data.diagnosis && data.diagnosis.length) {
+        errHtml += data.diagnosis.map(d => `<div style="margin-top:.3rem;color:var(--yellow)">${d}</div>`).join('');
+      }
+      errDiv.innerHTML = errHtml;
     } catch (e) {
       tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red)">Scan failed: ' + e.message + '</td></tr>';
     }

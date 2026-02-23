@@ -340,6 +340,14 @@ class ModbusPoller(threading.Thread):
 app = Flask(__name__)
 
 
+@app.errorhandler(400)
+@app.errorhandler(502)
+@app.errorhandler(503)
+def _json_error(exc):
+    """Return JSON for all API error responses so the frontend can display them."""
+    return jsonify(ok=False, description=exc.description), exc.code
+
+
 def _state_snapshot() -> dict:
     with _state_lock:
         snap = asdict(_state)
@@ -348,6 +356,17 @@ def _state_snapshot() -> dict:
         if snap["lot_target"] > 0
         else 0
     )
+    # Flag when connected but all key metrics are zero (likely wrong unit ID /
+    # wrong register addresses, or machine genuinely idle with no motion).
+    snap["data_looks_valid"] = not snap["connected"] or any([
+        snap["status_word"],
+        snap["x_pos"],
+        snap["y_pos"],
+        snap["z_pos"],
+        snap["spindle_rpm"],
+        snap["feed_rate"],
+        snap["pkt_counter"],
+    ])
     return snap
 
 
@@ -553,15 +572,25 @@ def api_scan():
     Open a fresh Modbus connection and read key register ranges, returning
     raw values. Useful for diagnosing which endpoints actually respond and
     verifying register assignments without relying on the polling thread.
+
+    Optional query parameters:
+      ?unit_id=N   – override the Modbus unit/slave ID for this scan (integer)
     """
+    # Allow overriding unit ID via query string for diagnostic purposes
+    try:
+        scan_unit = int(request.args.get("unit_id", MODBUS_UNIT))
+    except (TypeError, ValueError):
+        scan_unit = MODBUS_UNIT
+
     results: dict = {
         "config": {
             "modbus_host": MODBUS_HOST,
             "modbus_port": MODBUS_PORT,
-            "modbus_unit_id": MODBUS_UNIT,
+            "modbus_unit_id": scan_unit,
         },
         "scans": [],
         "errors": [],
+        "diagnosis": [],
     }
 
     client = ModbusTcpClient(host=MODBUS_HOST, port=MODBUS_PORT)
@@ -590,8 +619,9 @@ def api_scan():
             12: "Lot target",
             13: "Lot ID",
         }
+        main_all_zero = True
         try:
-            rr = client.read_holding_registers(address=0, count=14, device_id=MODBUS_UNIT)
+            rr = client.read_holding_registers(address=0, count=14, device_id=scan_unit)
             if rr.isError():
                 results["errors"].append(f"Holding regs 0-13 error: {rr}")
             else:
@@ -603,12 +633,14 @@ def api_scan():
                         "raw_value": val,
                         "hex": hex(val),
                     })
+                main_all_zero = all(v == 0 for v in rr.registers)
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Holding regs 0-13 exception: {exc}")
 
         # --- Diagnostic registers 5000–5008 (connection/packet stats) ---
+        diag_all_zero = True
         try:
-            rr = client.read_holding_registers(address=REG_CONN_STATUS, count=_DIAG_REG_COUNT, device_id=MODBUS_UNIT)
+            rr = client.read_holding_registers(address=REG_CONN_STATUS, count=_DIAG_REG_COUNT, device_id=scan_unit)
             if rr.isError():
                 results["errors"].append(f"Diagnostic regs {REG_CONN_STATUS}-{REG_PKG_EXCEPTION} error: {rr}")
             else:
@@ -632,8 +664,33 @@ def api_scan():
                         "raw_value": val,
                         "hex": hex(val),
                     })
+                diag_all_zero = all(v == 0 for v in rr.registers)
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Diagnostic regs exception: {exc}")
+
+        # --- Input registers 0–13 (FC4) – alternative for some LNC firmware versions ---
+        try:
+            ri = client.read_input_registers(address=0, count=14, device_id=scan_unit)
+            if ri.isError():
+                results["errors"].append(f"Input regs 0-13 (FC4) error: {ri}")
+            else:
+                input_any_nonzero = any(v != 0 for v in ri.registers)
+                for i, val in enumerate(ri.registers):
+                    results["scans"].append({
+                        "type": "input_register(FC4)",
+                        "address": i,
+                        "description": _main_desc.get(i, ""),
+                        "raw_value": val,
+                        "hex": hex(val),
+                    })
+                if input_any_nonzero and main_all_zero:
+                    results["diagnosis"].append(
+                        "⚠ Input registers (FC4) contain non-zero data but holding registers (FC3) are all zero. "
+                        "This LNC firmware version may expose machine data as input registers (FC4) instead of "
+                        "holding registers (FC3). Check your PLC program's Modbus mapping."
+                    )
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Input regs 0-13 (FC4) exception: {exc}")
 
         # --- Coils 0–8 ---
         _coil_desc = {
@@ -648,7 +705,7 @@ def api_scan():
             8: "Aspiration / Vacuum Cleaner ON",
         }
         try:
-            rc = client.read_coils(address=0, count=9, device_id=MODBUS_UNIT)
+            rc = client.read_coils(address=0, count=9, device_id=scan_unit)
             if rc.isError():
                 results["errors"].append(f"Coils 0-8 error: {rc}")
             else:
@@ -666,7 +723,7 @@ def api_scan():
         # --- Stopper status registers R20204 (PLC→HMI, 2×16-bit = 32-bit) ---
         try:
             rr = client.read_holding_registers(
-                address=REG_STOPPER_STS_LO, count=2, device_id=MODBUS_UNIT
+                address=REG_STOPPER_STS_LO, count=2, device_id=scan_unit
             )
             if rr.isError():
                 results["errors"].append(f"Stopper status regs {REG_STOPPER_STS_LO}-{REG_STOPPER_STS_HI} error: {rr}")
@@ -684,13 +741,45 @@ def api_scan():
                     })
                 results["scans"].append({
                     "type": "decoded",
-                    "address": f"R20204 (combined)",
+                    "address": "R20204 (combined)",
                     "description": f"FORWARD_POS(bit17)={bool(combined & (1<<17))} LEFT_POS(bit18)={bool(combined & (1<<18))}",
                     "raw_value": combined,
                     "hex": hex(combined & 0xFFFFFFFF),
                 })
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Stopper status regs exception: {exc}")
+
+        # --- Alternate unit-ID probe: if primary scan all-zeros, try unit IDs 0 and 1 ---
+        if main_all_zero and diag_all_zero:
+            alt_uid = 0 if scan_unit != 0 else 1
+            results["diagnosis"].append(
+                f"⚠ All holding registers returned 0 with unit_id={scan_unit}. "
+                f"Probing alternate unit_id={alt_uid} to check for a unit-ID mismatch…"
+            )
+            try:
+                rr_alt = client.read_holding_registers(address=0, count=14, device_id=alt_uid)
+                if not rr_alt.isError() and any(v != 0 for v in rr_alt.registers):
+                    results["diagnosis"].append(
+                        f"✓ Non-zero data found with unit_id={alt_uid}! "
+                        f"Restart the app with MODBUS_UNIT={alt_uid} (set the environment variable)."
+                    )
+                    for i, val in enumerate(rr_alt.registers):
+                        results["scans"].append({
+                            "type": f"holding_register(unit_id={alt_uid})",
+                            "address": i,
+                            "description": _main_desc.get(i, ""),
+                            "raw_value": val,
+                            "hex": hex(val),
+                        })
+                else:
+                    results["diagnosis"].append(
+                        f"✗ unit_id={alt_uid} also returned all zeros or an error. "
+                        "Possible causes: machine is genuinely idle (at home/zero position), "
+                        "wrong MODBUS_HOST IP, Modbus TCP not enabled (parameter 45010 must be 1), "
+                        "or the PLC program does not map these addresses."
+                    )
+            except Exception as exc:  # noqa: BLE001
+                results["diagnosis"].append(f"Alt unit-ID probe exception: {exc}")
 
     except Exception as exc:  # noqa: BLE001
         results["errors"].append(f"Unexpected error during scan: {exc}")

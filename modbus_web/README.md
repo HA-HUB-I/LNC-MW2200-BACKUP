@@ -233,9 +233,40 @@ If the dashboard shows **Disconnected**, check the following:
    1-based Modicon-style addresses — for holding registers, 0-based address 0
    becomes 40001 in Modicon notation (40000 + address + 1).
 
+---
+
+### Connected but all values show zero?
+
+If the dashboard shows **Connected** (green) but all register values are 0:
+
+1. **Wrong MODBUS_HOST** – The app connected to a different device on port 502
+   (e.g. a network switch or router). Confirm the controller's actual IP address
+   and restart with `MODBUS_HOST=<correct-ip>`.
+
+2. **Wrong Unit ID** – Click **Scan Registers** in the dashboard. The scan
+   automatically probes unit IDs 0 and 1 and reports which one returns real data.
+   If the alternate unit ID has data, restart with `MODBUS_UNIT=<correct-id>`.
+   You can also test a specific unit ID directly:
+   ```bash
+   curl "http://localhost:5000/api/scan?unit_id=0"
+   ```
+
+3. **Machine is genuinely idle** – If the machine is at its home/zero position
+   with the spindle off and no alarm, all registers can legitimately be 0.
+   Move an axis or start the spindle briefly to confirm the values change.
+
+4. **Modbus TCP not enabled on the controller** – Verify `parameter 45010 = 1`
+   on the HMI even if the TCP connection (port 502) is open.
+
+5. **Coil writes fail silently** – If commands appear to succeed (toast shows
+   "✓ sent") but the machine does not react, the coil addresses in the PLC
+   program may differ from the defaults. Check the PLC project's Modbus coil
+   mapping and update the `COIL_*` constants at the top of `app.py`.
+
 ### New API Endpoints
 
 | Endpoint | Method | Description |
 |---|---|---|
 | `/api/diagnostics` | GET | Config, register map, last error, connection hints |
 | `/api/scan` | GET | Fresh Modbus read of all mapped registers and coils with raw values |
+| `/api/scan?unit_id=N` | GET | Same scan with a specific Modbus unit/slave ID |
