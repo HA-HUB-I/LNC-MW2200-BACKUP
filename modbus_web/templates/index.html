@@ -348,6 +348,33 @@
       white-space: nowrap;
     }
 
+    /* ── Runtime card ─────────────────────────────────────────────── */
+    .runtime-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5rem 1rem;
+    }
+
+    .runtime-item label {
+      display: block;
+      font-size: .68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: .15rem;
+    }
+
+    .runtime-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      letter-spacing: -.01em;
+    }
+
+    .runtime-value.inactive { color: var(--muted); font-size: 1rem; }
+
     #scan-output {
       display: none;
       margin-top: .75rem;
@@ -434,6 +461,29 @@
     </div>
   </div>
 
+  <!-- Runtime / cycle time -->
+  <div class="card">
+    <h2>Runtime &amp; Cycle Time</h2>
+    <div class="runtime-grid">
+      <div class="runtime-item">
+        <label>Current Cycle</label>
+        <span class="runtime-value inactive" id="val-cycle-cur">—</span>
+      </div>
+      <div class="runtime-item">
+        <label>Session Machining</label>
+        <span class="runtime-value" id="val-cycle-total">0:00:00</span>
+      </div>
+      <div class="runtime-item">
+        <label>Controller Idle Time</label>
+        <span class="runtime-value inactive" id="val-idle-time">—</span>
+      </div>
+      <div class="runtime-item">
+        <label>Modbus Packets</label>
+        <span class="runtime-value" id="val-pkt-counter">—</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Lot counter -->
   <div class="card">
     <h2>Lot / Production</h2>
@@ -483,7 +533,7 @@
     <button class="btn" style="width:auto;padding:.4rem 1rem" onclick="runScan()">🔍 Scan Registers</button>
     <div id="scan-output">
       <table class="diag-table" id="scan-table">
-        <thead><tr><th>Type</th><th>Address</th><th>Raw Value</th><th>Hex</th></tr></thead>
+        <thead><tr><th>Type</th><th>Address</th><th>Description</th><th>Raw Value</th><th>Hex</th></tr></thead>
         <tbody></tbody>
       </table>
       <div id="scan-errors"></div>
@@ -503,6 +553,14 @@
         <tr><td>12</td><td>Lot target</td></tr>
         <tr><td>13</td><td>Lot ID</td></tr>
         <tr><td>5000</td><td>Connection status (OpenPortResultAddr)</td></tr>
+        <tr><td>5001</td><td>Connection idle time – seconds (IdleTimeAddr)</td></tr>
+        <tr><td>5002</td><td>Total Modbus packets processed (CounterAddr)</td></tr>
+        <tr><td>5003</td><td>Last error data (ErrDataAddr)</td></tr>
+        <tr><td>5004</td><td>Last error register address (ErrAddrAddr)</td></tr>
+        <tr><td>5005</td><td>Packets sent by server (PkgThisAddr)</td></tr>
+        <tr><td>5006</td><td>Packets received from client (PkgOtherAddr)</td></tr>
+        <tr><td>5007</td><td>Packets responded (PkgRspAddr)</td></tr>
+        <tr><td>5008</td><td>Exception (error) packets (PkgExcptionAddr)</td></tr>
       </tbody>
     </table>
     <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">
@@ -518,6 +576,14 @@
 <script>
   const MAX_SPINDLE = 24000;
   const MAX_FEED    = 15000;
+
+  function fmtSeconds(s) {
+    s = Math.max(0, Math.floor(s));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
 
   function showToast(msg, ok = true) {
     const t = document.getElementById('toast');
@@ -602,6 +668,26 @@
       document.getElementById('val-lot-pct').textContent    = d.lot_progress_pct;
       document.getElementById('bar-lot').style.width = d.lot_progress_pct + '%';
 
+      // Runtime / cycle time
+      const cycCur = document.getElementById('val-cycle-cur');
+      if (d.cycle_running && d.current_cycle_time_s > 0) {
+        cycCur.textContent = fmtSeconds(d.current_cycle_time_s);
+        cycCur.className = 'runtime-value';
+      } else {
+        cycCur.textContent = '—';
+        cycCur.className = 'runtime-value inactive';
+      }
+      document.getElementById('val-cycle-total').textContent = fmtSeconds(d.total_cycle_time_s);
+      const idleEl = document.getElementById('val-idle-time');
+      if (d.idle_time_s > 0) {
+        idleEl.textContent = fmtSeconds(d.idle_time_s);
+        idleEl.className = 'runtime-value';
+      } else {
+        idleEl.textContent = '—';
+        idleEl.className = 'runtime-value inactive';
+      }
+      document.getElementById('val-pkt-counter').textContent = d.pkt_counter > 0 ? d.pkt_counter : '—';
+
       // Footer timestamp
       const ts = d.last_update ? new Date(d.last_update * 1000).toLocaleTimeString() : '—';
       document.getElementById('footer-ts').textContent = 'Last update: ' + ts;
@@ -658,7 +744,7 @@
     const tbody = document.querySelector('#scan-table tbody');
     const errDiv = document.getElementById('scan-errors');
     out.style.display = 'block';
-    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">Scanning…</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Scanning…</td></tr>';
     errDiv.textContent = '';
     try {
       const res = await fetch('/api/scan');
@@ -666,17 +752,17 @@
       tbody.innerHTML = '';
       for (const row of data.scans) {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row.type}</td><td>${row.address}</td><td>${row.raw_value}</td><td>${row.hex || ''}</td>`;
+        tr.innerHTML = `<td>${row.type}</td><td>${row.address}</td><td>${row.description || ''}</td><td>${row.raw_value}</td><td>${row.hex || ''}</td>`;
         tbody.appendChild(tr);
       }
       if (tbody.children.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">No registers read</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">No registers read</td></tr>';
       }
       if (data.errors && data.errors.length) {
         errDiv.textContent = 'Errors: ' + data.errors.join(' | ');
       }
     } catch (e) {
-      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--red)">Scan failed: ' + e.message + '</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red)">Scan failed: ' + e.message + '</td></tr>';
     }
   }
 

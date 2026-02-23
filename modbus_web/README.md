@@ -120,6 +120,8 @@ Set a new lot target quantity.
 The application reads **holding registers** (function code 3) starting at
 address 0. Register numbers below are **0-based** (Modbus PDU addressing).
 
+### Main data registers
+
 | Address | Description | Unit |
 |---|---|---|
 | 0 | Machine status word (bit flags) | — |
@@ -133,7 +135,28 @@ address 0. Register numbers below are **0-based** (Modbus PDU addressing).
 | 11 | Lot count (parts produced) | — |
 | 12 | Lot target | — |
 | 13 | Lot ID | — |
-| 5000 | Connection status (`OpenPortResultAddr`) | — |
+
+### Diagnostic registers (from `Eth_ModbusServerTCP.ini`)
+
+> 0-based PDU address = controller 1-based address − 1
+
+| Address | Description | ini key |
+|---|---|---|
+| 5000 | Connection status | `OpenPortResultAddr=5001` |
+| 5001 | Connection idle time (seconds) | `IdleTimeAddr=5002` |
+| 5002 | Total Modbus packets processed | `CounterAddr=5003` |
+| 5003 | Last error data value | `ErrDataAddr=5004` |
+| 5004 | Last error register address | `ErrAddrAddr=5005` |
+| 5005 | Packets sent by server | `PkgThisAddr=5006` |
+| 5006 | Packets received from client | `PkgOtherAddr=5007` |
+| 5007 | Packets responded | `PkgRspAddr=5008` |
+| 5008 | Exception (error) packets | `PkgExcptionAddr=5009` |
+
+> **Note**: The LNC controller does not expose total machine uptime or current
+> cycle time as Modbus registers. The web dashboard tracks these internally by
+> monitoring the `cycle_running` status bit (bit 2 of R[0]):
+> - **Current cycle time** – elapsed time since the last cycle-start transition.
+> - **Session machining time** – accumulated cycle time since the web server started.
 
 ### Status Word Bit Map
 

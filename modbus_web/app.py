@@ -16,9 +16,16 @@ Register map (LNC Modbus TCP, holding registers, 0-based addresses):
   Lot target           – R[12]  (target parts for current lot)
   Lot ID               – R[13]  (current lot identifier)
 
-  Connection status    – R[5000] (OpenPortResultAddr 5001 − 1, 0-based PDU)
-  Idle time            – R[5002]
-  Packet counter       – R[5003]
+  Diagnostic registers (from Eth_ModbusServerTCP.ini, 0-based PDU = ini value − 1):
+  Connection status    – R[5000] (OpenPortResultAddr=5001)
+  Idle time            – R[5001] (IdleTimeAddr=5002)
+  Packet counter       – R[5002] (CounterAddr=5003)
+  Error data           – R[5003] (ErrDataAddr=5004)
+  Error address        – R[5004] (ErrAddrAddr=5005)
+  Packets sent         – R[5005] (PkgThisAddr=5006)
+  Packets received     – R[5006] (PkgOtherAddr=5007)
+  Packets responded    – R[5007] (PkgRspAddr=5008)
+  Exception packets    – R[5008] (PkgExcptionAddr=5009)
 
 Status word bit map:
   bit 0 – Emergency Stop active
@@ -79,10 +86,20 @@ REG_LOT_COUNT = 11
 REG_LOT_TARGET = 12
 REG_LOT_ID = 13
 
-# Connection status register.
-# Eth_ModbusServerTCP.ini sets OpenPortResultAddr=5001 (1-based controller
-# notation). Modbus PDU addressing is 0-based, so subtract 1: 5001 - 1 = 5000.
-REG_CONN_STATUS = 5000
+# Diagnostic registers from Eth_ModbusServerTCP.ini.
+# The ini file uses 1-based controller notation; subtract 1 for 0-based PDU.
+REG_CONN_STATUS    = 5000   # OpenPortResultAddr=5001
+REG_IDLE_TIME      = 5001   # IdleTimeAddr=5002  (connection idle seconds)
+REG_PKT_COUNTER    = 5002   # CounterAddr=5003   (total packets processed)
+REG_ERR_DATA       = 5003   # ErrDataAddr=5004
+REG_ERR_ADDR       = 5004   # ErrAddrAddr=5005
+REG_PKG_THIS       = 5005   # PkgThisAddr=5006   (packets sent by server)
+REG_PKG_OTHER      = 5006   # PkgOtherAddr=5007  (packets received)
+REG_PKG_RSP        = 5007   # PkgRspAddr=5008    (packets responded)
+REG_PKG_EXCEPTION  = 5008   # PkgExcptionAddr=5009 (exception packets)
+
+# Number of diagnostic registers to read in one block starting at REG_CONN_STATUS
+_DIAG_REG_COUNT = REG_PKG_EXCEPTION - REG_CONN_STATUS + 1  # 9 registers
 
 # Coil addresses (0-based)
 COIL_CYCLE_START = 0
@@ -125,8 +142,15 @@ class MachineState:
     lot_target: int = 0
     lot_id: int = 0
     conn_status: int = 0
+    idle_time_s: int = 0       # seconds the Modbus connection has been idle
+    pkt_counter: int = 0       # total Modbus packets processed by controller
+    pkt_exception: int = 0     # exception (error) packets
     last_update: float = 0.0
     last_error: str = ""
+
+    # Cycle / runtime tracking (computed by the poller, not from registers)
+    current_cycle_time_s: float = 0.0   # elapsed time of the current cycle
+    total_cycle_time_s: float = 0.0     # accumulated machining time this session
 
     # Decoded status flags
     estop_active: bool = False
@@ -169,6 +193,9 @@ class ModbusPoller(threading.Thread):
     def __init__(self) -> None:
         super().__init__(daemon=True, name="ModbusPoller")
         self._client: Optional[ModbusTcpClient] = None
+        self._cycle_was_running: bool = False
+        self._cycle_start: Optional[float] = None
+        self._total_cycle_s: float = 0.0
 
     def _connect(self) -> bool:
         try:
@@ -194,11 +221,27 @@ class ModbusPoller(threading.Thread):
 
             regs = rr.registers
 
-            # Read connection status register (5000, count 1)
-            rr_conn = self._client.read_holding_registers(
-                address=REG_CONN_STATUS, count=1, device_id=MODBUS_UNIT
+            # Read diagnostic register block (5000–5008, 9 registers)
+            rr_diag = self._client.read_holding_registers(
+                address=REG_CONN_STATUS, count=_DIAG_REG_COUNT, device_id=MODBUS_UNIT
             )
-            conn_val = rr_conn.registers[0] if not rr_conn.isError() else 0
+            if rr_diag.isError():
+                diag = [0] * _DIAG_REG_COUNT
+            else:
+                diag = rr_diag.registers
+
+            # Cycle-time tracking (computed from the cycle_running status bit)
+            now = time.time()
+            cycle_running_now = bool(regs[REG_STATUS] & (1 << 2))
+            if cycle_running_now and not self._cycle_was_running:
+                self._cycle_start = now
+            elif not cycle_running_now and self._cycle_was_running:
+                if self._cycle_start is not None:
+                    self._total_cycle_s += now - self._cycle_start
+                    self._cycle_start = None
+            self._cycle_was_running = cycle_running_now
+
+            current_cycle_s = (now - self._cycle_start) if self._cycle_start is not None else 0.0
 
             with _state_lock:
                 _state.connected = True
@@ -214,8 +257,13 @@ class ModbusPoller(threading.Thread):
                 _state.lot_count = regs[REG_LOT_COUNT]
                 _state.lot_target = regs[REG_LOT_TARGET]
                 _state.lot_id = regs[REG_LOT_ID]
-                _state.conn_status = conn_val
-                _state.last_update = time.time()
+                _state.conn_status   = diag[REG_CONN_STATUS   - REG_CONN_STATUS]
+                _state.idle_time_s   = diag[REG_IDLE_TIME      - REG_CONN_STATUS]
+                _state.pkt_counter   = diag[REG_PKT_COUNTER    - REG_CONN_STATUS]
+                _state.pkt_exception = diag[REG_PKG_EXCEPTION  - REG_CONN_STATUS]
+                _state.current_cycle_time_s = current_cycle_s
+                _state.total_cycle_time_s   = self._total_cycle_s + current_cycle_s
+                _state.last_update = now
                 _state.decode_status_word()
 
         except Exception as exc:  # noqa: BLE001
@@ -321,7 +369,15 @@ def api_diagnostics():
             {"address": REG_LOT_COUNT,  "description": "Lot count (parts produced)"},
             {"address": REG_LOT_TARGET, "description": "Lot target"},
             {"address": REG_LOT_ID,     "description": "Lot ID"},
-            {"address": REG_CONN_STATUS,"description": "Connection status (OpenPortResultAddr 5001, 0-based PDU)"},
+            {"address": REG_CONN_STATUS,   "description": "Connection status (OpenPortResultAddr=5001 in ini)"},
+            {"address": REG_IDLE_TIME,     "description": "Connection idle time – seconds (IdleTimeAddr=5002)"},
+            {"address": REG_PKT_COUNTER,   "description": "Total Modbus packets processed (CounterAddr=5003)"},
+            {"address": REG_ERR_DATA,      "description": "Last error data value (ErrDataAddr=5004)"},
+            {"address": REG_ERR_ADDR,      "description": "Last error register address (ErrAddrAddr=5005)"},
+            {"address": REG_PKG_THIS,      "description": "Packets sent by server (PkgThisAddr=5006)"},
+            {"address": REG_PKG_OTHER,     "description": "Packets received from client (PkgOtherAddr=5007)"},
+            {"address": REG_PKG_RSP,       "description": "Packets responded (PkgRspAddr=5008)"},
+            {"address": REG_PKG_EXCEPTION, "description": "Exception (error) packets (PkgExcptionAddr=5009)"},
         ],
         "coils": [
             {"address": COIL_CYCLE_START, "name": "cycle_start",  "description": "Cycle Start"},
@@ -366,6 +422,8 @@ def api_diagnostics():
             "Unit ID is typically 1; change MODBUS_UNIT env-var if your controller uses a different slave ID",
             "Register addresses are 0-based (Modbus PDU). Some tools display 1-based addresses (add 1).",
             "Use /api/scan to read raw register values and verify the endpoint mapping",
+            "Cycle time and total session machining time are computed by the web app from the cycle_running status bit – they reset when the web server restarts",
+            "idle_time_s (R[5001]) is the Modbus connection idle counter from the controller, not total machine uptime",
         ],
     })
 
@@ -397,6 +455,22 @@ def api_scan():
             return jsonify(results)
 
         # --- Holding registers 0–13 (main data block) ---
+        _main_desc = {
+            0: "Machine status word",
+            1: "X pos – low word (×0.001 mm)",
+            2: "X pos – high word",
+            3: "Y pos – low word",
+            4: "Y pos – high word",
+            5: "Z pos – low word",
+            6: "Z pos – high word",
+            7: "Spindle speed (RPM)",
+            8: "Feed rate (mm/min)",
+            9: "Active alarm code",
+            10: "Program number",
+            11: "Lot count",
+            12: "Lot target",
+            13: "Lot ID",
+        }
         try:
             rr = client.read_holding_registers(address=0, count=14, device_id=MODBUS_UNIT)
             if rr.isError():
@@ -406,28 +480,53 @@ def api_scan():
                     results["scans"].append({
                         "type": "holding_register",
                         "address": i,
+                        "description": _main_desc.get(i, ""),
                         "raw_value": val,
                         "hex": hex(val),
                     })
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Holding regs 0-13 exception: {exc}")
 
-        # --- Connection status register 5000 ---
+        # --- Diagnostic registers 5000–5008 (connection/packet stats) ---
         try:
-            rr = client.read_holding_registers(address=REG_CONN_STATUS, count=1, device_id=MODBUS_UNIT)
+            rr = client.read_holding_registers(address=REG_CONN_STATUS, count=_DIAG_REG_COUNT, device_id=MODBUS_UNIT)
             if rr.isError():
-                results["errors"].append(f"Holding reg {REG_CONN_STATUS} error: {rr}")
+                results["errors"].append(f"Diagnostic regs {REG_CONN_STATUS}-{REG_PKG_EXCEPTION} error: {rr}")
             else:
-                results["scans"].append({
-                    "type": "holding_register",
-                    "address": REG_CONN_STATUS,
-                    "raw_value": rr.registers[0],
-                    "hex": hex(rr.registers[0]),
-                })
+                _diag_desc = {
+                    REG_CONN_STATUS:   "Connection status",
+                    REG_IDLE_TIME:     "Idle time (s)",
+                    REG_PKT_COUNTER:   "Packet counter",
+                    REG_ERR_DATA:      "Error data",
+                    REG_ERR_ADDR:      "Error address",
+                    REG_PKG_THIS:      "Packets sent",
+                    REG_PKG_OTHER:     "Packets received",
+                    REG_PKG_RSP:       "Packets responded",
+                    REG_PKG_EXCEPTION: "Exception packets",
+                }
+                for offset, val in enumerate(rr.registers):
+                    addr = REG_CONN_STATUS + offset
+                    results["scans"].append({
+                        "type": "holding_register",
+                        "address": addr,
+                        "description": _diag_desc.get(addr, ""),
+                        "raw_value": val,
+                        "hex": hex(val),
+                    })
         except Exception as exc:  # noqa: BLE001
-            results["errors"].append(f"Holding reg {REG_CONN_STATUS} exception: {exc}")
+            results["errors"].append(f"Diagnostic regs exception: {exc}")
 
         # --- Coils 0–7 ---
+        _coil_desc = {
+            0: "Cycle Start",
+            1: "Feed Hold",
+            2: "Reset / Clear Alarm",
+            3: "Spindle CW",
+            4: "Spindle CCW",
+            5: "Coolant ON",
+            6: "Software E-Stop",
+            7: "Lot Reset",
+        }
         try:
             rc = client.read_coils(address=0, count=8, device_id=MODBUS_UNIT)
             if rc.isError():
@@ -437,7 +536,9 @@ def api_scan():
                     results["scans"].append({
                         "type": "coil",
                         "address": i,
+                        "description": _coil_desc.get(i, ""),
                         "raw_value": int(val),
+                        "hex": "",
                     })
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Coils 0-7 exception: {exc}")
