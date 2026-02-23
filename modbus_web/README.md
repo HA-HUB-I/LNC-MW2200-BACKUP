@@ -168,3 +168,51 @@ The default TCP port is **502** (configurable in `Eth_ModbusServerTCP.ini`).
 This application is intended for use on a **trusted local network** only.
 It does not include authentication or TLS. Do not expose it to the public
 internet.
+
+> **Authentication**: Modbus TCP has **no built-in authentication**. Any client
+> that can reach port 502 on the LNC controller can read/write registers. Ensure
+> the controller is on an isolated machine network or protected by a firewall.
+
+## Troubleshooting / Diagnostics
+
+If the dashboard shows **Disconnected**, check the following:
+
+1. **Verify Modbus TCP is enabled** on the LNC controller:
+   - Set parameter `45010 = 1` via the HMI.
+   - The default port is **502** (configurable in `Eth_ModbusServerTCP.ini`).
+
+2. **Check network reachability** – ping the controller IP and confirm port 502 is open:
+   ```bash
+   ping <controller-ip>
+   # from Linux:
+   nc -zv <controller-ip> 502
+   ```
+
+3. **Inspect the live error message** – the dashboard now shows the last Modbus
+   error directly under the connection badge when disconnected.
+
+4. **Use the Scan endpoint** to read raw register values and verify the endpoint
+   mapping without relying on the polling thread:
+   ```bash
+   curl http://localhost:5000/api/scan
+   ```
+
+5. **Use the Diagnostics endpoint** for a full summary of the configuration,
+   register/coil map, and connection state:
+   ```bash
+   curl http://localhost:5000/api/diagnostics
+   ```
+
+6. **Unit ID (Slave ID)** – the default is `1`. If your controller uses a
+   different slave ID, set `MODBUS_UNIT=<id>` before starting the app.
+
+7. **Register addresses are 0-based** (Modbus PDU). Some Modbus tools show
+   1-based Modicon-style addresses — for holding registers, 0-based address 0
+   becomes 40001 in Modicon notation (40000 + address + 1).
+
+### New API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/diagnostics` | GET | Config, register map, last error, connection hints |
+| `/api/scan` | GET | Fresh Modbus read of all mapped registers and coils with raw values |
