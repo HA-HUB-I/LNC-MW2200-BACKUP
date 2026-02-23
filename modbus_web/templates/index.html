@@ -382,6 +382,24 @@
       overflow-y: auto;
     }
 
+    /* Sub-section header within a card (same style used for "Stoppers / Locators" label) */
+    .subsection-label {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: .35rem;
+    }
+
+    /* Smaller axis value variant for secondary coordinate rows */
+    .axis-value-sm {
+      font-size: 1.1rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -.02em;
+    }
+
     #scan-errors {
       margin-top: .4rem;
       font-size: .72rem;
@@ -420,7 +438,7 @@
       <span class="flag" id="fl-door">Door Open</span>
     </div>
     <div style="margin-top:.6rem">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.35rem">Stoppers / Locators</div>
+      <div class="subsection-label">Stoppers / Locators</div>
       <div class="flags">
         <span class="flag" id="fl-forward-pos" title="FORWARD POS – front stopper">↑ Front Stopper</span>
         <span class="flag" id="fl-left-pos"    title="LEFT POS – left stopper">← Left Stopper</span>
@@ -430,12 +448,15 @@
       Program&nbsp;#<span id="val-program">—</span>
       &nbsp;|&nbsp;
       Alarm&nbsp;code&nbsp;<span id="val-alarm">—</span>
+      &nbsp;|&nbsp;
+      G-code&nbsp;line&nbsp;<span id="val-gcode-line">—</span>
     </div>
   </div>
 
   <!-- Axis positions -->
   <div class="card">
     <h2>Axis Positions</h2>
+    <div class="subsection-label">Relative (Program)</div>
     <div class="axis-row">
       <span class="axis-label">X</span>
       <span><span class="axis-value" id="val-x">0.000</span>&nbsp;<span class="axis-unit">mm</span></span>
@@ -447,6 +468,19 @@
     <div class="axis-row">
       <span class="axis-label">Z</span>
       <span><span class="axis-value" id="val-z">0.000</span>&nbsp;<span class="axis-unit">mm</span></span>
+    </div>
+    <div class="subsection-label" style="margin-top:.75rem">Absolute Machine (R10000+)</div>
+    <div class="axis-row">
+      <span class="axis-label">X</span>
+      <span><span class="axis-value axis-value-sm" id="val-abs-x">0.000</span>&nbsp;<span class="axis-unit">mm</span></span>
+    </div>
+    <div class="axis-row">
+      <span class="axis-label">Y</span>
+      <span><span class="axis-value axis-value-sm" id="val-abs-y">0.000</span>&nbsp;<span class="axis-unit">mm</span></span>
+    </div>
+    <div class="axis-row">
+      <span class="axis-label">Z</span>
+      <span><span class="axis-value axis-value-sm" id="val-abs-z">0.000</span>&nbsp;<span class="axis-unit">mm</span></span>
     </div>
   </div>
 
@@ -529,7 +563,7 @@
       <button class="btn red full" onclick="confirmEstop()">🛑 SOFTWARE E-STOP</button>
     </div>
     <div style="margin-top:.9rem">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">Stoppers / Locators (R20104 write)</div>
+      <div class="subsection-label">Stoppers / Locators (R20104 write)</div>
       <div class="controls-grid">
         <button class="btn" onclick="sendStopper('forward_pos', true)">↑ Front Stopper ON</button>
         <button class="btn" onclick="sendStopper('forward_pos', false)">↑ Front Stopper OFF</button>
@@ -586,6 +620,10 @@
         <tr><td>5008</td><td>Exception (error) packets (PkgExcptionAddr)</td></tr>
         <tr><td>20104+20105</td><td>Stopper command R20104 – HMI→PLC (lo/hi words, 32-bit). Bit 17=FORWARD POS, 18=LEFT POS</td></tr>
         <tr><td>20204+20205</td><td>Stopper status R20204 – PLC→HMI (lo/hi words, 32-bit). Same bit map</td></tr>
+        <tr><td>8102</td><td>G-code current line number (R8102, system-status range R8000–R8999; unverified – confirm with Scan)</td></tr>
+        <tr><td>10000+10001</td><td>Absolute X – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10001–10002</td></tr>
+        <tr><td>10002+10003</td><td>Absolute Y – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10003–10004</td></tr>
+        <tr><td>10004+10005</td><td>Absolute Z – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10005–10006</td></tr>
       </tbody>
     </table>
     <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">
@@ -686,15 +724,21 @@
       document.getElementById('val-y').textContent = d.y_pos.toFixed(3);
       document.getElementById('val-z').textContent = d.z_pos.toFixed(3);
 
+      // Absolute machine coordinates (R10000 range)
+      document.getElementById('val-abs-x').textContent = d.abs_x_pos.toFixed(3);
+      document.getElementById('val-abs-y').textContent = d.abs_y_pos.toFixed(3);
+      document.getElementById('val-abs-z').textContent = d.abs_z_pos.toFixed(3);
+
       // Spindle / feed
       document.getElementById('val-spindle').textContent = d.spindle_rpm;
       document.getElementById('bar-spindle').style.width  = pct(d.spindle_rpm, MAX_SPINDLE) + '%';
       document.getElementById('val-feed').textContent = d.feed_rate;
       document.getElementById('bar-feed').style.width  = pct(d.feed_rate, MAX_FEED) + '%';
 
-      // Program / alarm code
-      document.getElementById('val-program').textContent = d.program_number || '—';
-      document.getElementById('val-alarm').textContent   = d.alarm_code     || '—';
+      // Program / alarm code / G-code line
+      document.getElementById('val-program').textContent  = d.program_number || '—';
+      document.getElementById('val-alarm').textContent    = d.alarm_code     || '—';
+      document.getElementById('val-gcode-line').textContent = d.gcode_line   || '—';
 
       // Lot
       document.getElementById('val-lot-count').textContent  = d.lot_count;
