@@ -419,6 +419,13 @@
       <span class="flag" id="fl-pause">Paused</span>
       <span class="flag" id="fl-door">Door Open</span>
     </div>
+    <div style="margin-top:.6rem">
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.35rem">Stoppers / Locators</div>
+      <div class="flags">
+        <span class="flag" id="fl-forward-pos" title="FORWARD POS – front stopper">↑ Front Stopper</span>
+        <span class="flag" id="fl-left-pos"    title="LEFT POS – left stopper">← Left Stopper</span>
+      </div>
+    </div>
     <div style="margin-top:.75rem; font-size:.72rem; color:var(--muted)">
       Program&nbsp;#<span id="val-program">—</span>
       &nbsp;|&nbsp;
@@ -516,9 +523,19 @@
       <button class="btn yellow" onclick="sendCommand('feed_hold')">⏸ Feed Hold</button>
       <button class="btn"        onclick="sendCommand('spindle_cw')">↻ Spindle CW</button>
       <button class="btn"        onclick="sendCommand('spindle_ccw')">↺ Spindle CCW</button>
-      <button class="btn"        onclick="sendCommand('coolant')">💧 Coolant ON</button>
+      <button class="btn"        onclick="sendCommand('vacuum_pump')">💧 Vacuum Pump 1</button>
+      <button class="btn"        onclick="sendCommand('aspiration')">🌀 Aspiration ON</button>
       <button class="btn"        onclick="sendCommand('reset')">↺ Reset / Clear Alarm</button>
       <button class="btn red full" onclick="confirmEstop()">🛑 SOFTWARE E-STOP</button>
+    </div>
+    <div style="margin-top:.9rem">
+      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.4rem">Stoppers / Locators (R20104 write)</div>
+      <div class="controls-grid">
+        <button class="btn" onclick="sendStopper('forward_pos', true)">↑ Front Stopper ON</button>
+        <button class="btn" onclick="sendStopper('forward_pos', false)">↑ Front Stopper OFF</button>
+        <button class="btn" onclick="sendStopper('left_pos', true)">← Left Stopper ON</button>
+        <button class="btn" onclick="sendStopper('left_pos', false)">← Left Stopper OFF</button>
+      </div>
     </div>
   </div>
 
@@ -561,10 +578,13 @@
         <tr><td>5006</td><td>Packets received from client (PkgOtherAddr)</td></tr>
         <tr><td>5007</td><td>Packets responded (PkgRspAddr)</td></tr>
         <tr><td>5008</td><td>Exception (error) packets (PkgExcptionAddr)</td></tr>
+        <tr><td>20104+20105</td><td>Stopper command R20104 – HMI→PLC (lo/hi words, 32-bit). Bit 17=FORWARD POS, 18=LEFT POS</td></tr>
+        <tr><td>20204+20205</td><td>Stopper status R20204 – PLC→HMI (lo/hi words, 32-bit). Same bit map</td></tr>
       </tbody>
     </table>
     <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">
-      Coils (0-based): 0=Cycle Start, 1=Feed Hold, 2=Reset, 3=Spindle CW, 4=Spindle CCW, 5=Coolant, 6=E-Stop, 7=Lot Reset
+      Coils (0-based): 0=Cycle Start, 1=Feed Hold, 2=Reset, 3=Spindle CW, 4=Spindle CCW, 5=Vacuum Pump 1, 6=E-Stop, 7=Lot Reset, 8=Aspiration<br>
+      Stoppers via <code>/api/stopper</code>: <code>{"stopper":"forward_pos","value":true}</code> or <code>{"stopper":"left_pos","value":false}</code>
     </p>
   </div>
 
@@ -636,6 +656,10 @@
       setFlag('fl-spindle', d.spindle_running, 'green');
       setFlag('fl-pause',   d.program_paused,  'yellow');
       setFlag('fl-door',    d.door_open,       'orange');
+
+      // Stopper / locator flags
+      setFlag('fl-forward-pos', d.forward_pos, 'green');
+      setFlag('fl-left-pos',    d.left_pos,    'green');
 
       // Alarm banner
       const banner = document.getElementById('alarm-banner');
@@ -709,6 +733,24 @@
       const data = await res.json();
       if (res.ok) {
         showToast(`✓ ${cmd} sent`, true);
+      } else {
+        showToast(`✗ ${data.description || res.statusText}`, false);
+      }
+    } catch (e) {
+      showToast('✗ Network error', false);
+    }
+  }
+
+  async function sendStopper(stopper, value) {
+    try {
+      const res = await fetch('/api/stopper', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stopper, value })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`✓ ${stopper} → ${value ? 'ON' : 'OFF'}`, true);
       } else {
         showToast(`✗ ${data.description || res.statusText}`, false);
       }
