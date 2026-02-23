@@ -27,6 +27,15 @@ Register map (LNC Modbus TCP, holding registers, 0-based addresses):
   Packets responded    – R[5007] (PkgRspAddr=5008)
   Exception packets    – R[5008] (PkgExcptionAddr=5009)
 
+  System-status registers (R8000–R8999 range):
+  G-code current line  – R[8102] (current program line being executed; unverified – confirm with /api/scan)
+
+  Absolute machine coordinate registers (R10000–R10500 range):
+  Each axis is a signed 32-bit DWord split across two 16-bit lo/hi registers.
+  Absolute X position  – R[10000] lo / R[10001] hi  (× 0.001 mm; Modbus 1-based: 10001–10002)
+  Absolute Y position  – R[10002] lo / R[10003] hi  (× 0.001 mm; Modbus 1-based: 10003–10004)
+  Absolute Z position  – R[10004] lo / R[10005] hi  (× 0.001 mm; Modbus 1-based: 10005–10006)
+
   Stopper/locator registers (32-bit PLC R-registers, exposed as 2×16-bit lo/hi pairs):
   HMI→PLC command  – R[20104] lo=addr 20104, hi=addr 20105
   PLC→HMI status   – R[20204] lo=addr 20204, hi=addr 20205
@@ -97,6 +106,19 @@ REG_PROGRAM = 10
 REG_LOT_COUNT = 11
 REG_LOT_TARGET = 12
 REG_LOT_ID = 13
+
+# System-status registers (R8000–R8999 range)
+REG_GCODE_LINE = 8102   # Current G-code line being executed (R8102); unverified – confirm with /api/scan
+
+# Absolute machine coordinate registers (R10000–R10500 range).
+# Each axis is a signed 32-bit DWord split across two 16-bit lo/hi holding registers.
+# 0-based PDU addresses (Modbus 1-based = 0-based address + 1):
+REG_ABS_X_LO = 10000   # Absolute X – low  word (R10000; Modbus 1-based: 10001)
+REG_ABS_X_HI = 10001   # Absolute X – high word (R10001; Modbus 1-based: 10002)
+REG_ABS_Y_LO = 10002   # Absolute Y – low  word (R10002; Modbus 1-based: 10003)
+REG_ABS_Y_HI = 10003   # Absolute Y – high word (R10003; Modbus 1-based: 10004)
+REG_ABS_Z_LO = 10004   # Absolute Z – low  word (R10004; Modbus 1-based: 10005)
+REG_ABS_Z_HI = 10005   # Absolute Z – high word (R10005; Modbus 1-based: 10006)
 
 # Diagnostic registers from Eth_ModbusServerTCP.ini.
 # The ini file uses 1-based controller notation; subtract 1 for 0-based PDU.
@@ -203,6 +225,14 @@ class MachineState:
     forward_pos: bool = False   # FORWARD POS – front stopper active
     left_pos: bool = False      # LEFT POS    – left  stopper active
 
+    # Absolute machine coordinates (from R10000 range; may be zero if not supported)
+    abs_x_pos: float = 0.0
+    abs_y_pos: float = 0.0
+    abs_z_pos: float = 0.0
+
+    # G-code current line number (from R8102; may be zero if not supported)
+    gcode_line: int = 0
+
     def decode_status_word(self) -> None:
         sw = self.status_word
         self.estop_active = bool(sw & (1 << 0))
@@ -281,6 +311,30 @@ class ModbusPoller(threading.Thread):
                 hi = rr_stopper.registers[1]
                 stopper_word = (hi << 16) | (lo & 0xFFFF)
 
+            # Read G-code current line number (R8102) – best-effort, not all firmware versions support this
+            gcode_line = 0
+            try:
+                rr_gcode = self._client.read_holding_registers(
+                    address=REG_GCODE_LINE, count=1, device_id=MODBUS_UNIT
+                )
+                if not rr_gcode.isError():
+                    gcode_line = rr_gcode.registers[0]
+            except Exception:  # noqa: BLE001
+                pass
+
+            # Read absolute machine coordinates (R10000–R10005, 3 axes × 32-bit) – best-effort
+            abs_x = abs_y = abs_z = 0.0
+            try:
+                rr_abs = self._client.read_holding_registers(
+                    address=REG_ABS_X_LO, count=6, device_id=MODBUS_UNIT
+                )
+                if not rr_abs.isError():
+                    abs_x = _regs_to_int32(rr_abs.registers[0], rr_abs.registers[1]) / 1000.0
+                    abs_y = _regs_to_int32(rr_abs.registers[2], rr_abs.registers[3]) / 1000.0
+                    abs_z = _regs_to_int32(rr_abs.registers[4], rr_abs.registers[5]) / 1000.0
+            except Exception:  # noqa: BLE001
+                pass
+
             # Cycle-time tracking (computed from the cycle_running status bit)
             now = time.time()
             cycle_running_now = bool(regs[REG_STATUS] & (1 << 2))
@@ -318,6 +372,10 @@ class ModbusPoller(threading.Thread):
                 _state.decode_status_word()
                 _state.forward_pos = bool(stopper_word & (1 << BIT_FORWARD_POS))
                 _state.left_pos    = bool(stopper_word & (1 << BIT_LEFT_POS))
+                _state.gcode_line  = gcode_line
+                _state.abs_x_pos   = abs_x
+                _state.abs_y_pos   = abs_y
+                _state.abs_z_pos   = abs_z
 
         except Exception as exc:  # noqa: BLE001
             with _state_lock:
@@ -508,6 +566,13 @@ def api_diagnostics():
             {"address": REG_STOPPER_CMD_HI, "description": "Stopper command – R20104 high word"},
             {"address": REG_STOPPER_STS_LO, "description": "Stopper status  – R20204 low word  (PLC→HMI, same bit map)"},
             {"address": REG_STOPPER_STS_HI, "description": "Stopper status  – R20204 high word"},
+            {"address": REG_GCODE_LINE,    "description": "G-code current line number (R8102, system-status range; unverified)"},
+            {"address": REG_ABS_X_LO,      "description": "Absolute X – low  word (R10000; Modbus 1-based: 10001, ×0.001 mm signed 32-bit)"},
+            {"address": REG_ABS_X_HI,      "description": "Absolute X – high word (R10001)"},
+            {"address": REG_ABS_Y_LO,      "description": "Absolute Y – low  word (R10002; Modbus 1-based: 10003, ×0.001 mm signed 32-bit)"},
+            {"address": REG_ABS_Y_HI,      "description": "Absolute Y – high word (R10003)"},
+            {"address": REG_ABS_Z_LO,      "description": "Absolute Z – low  word (R10004; Modbus 1-based: 10005, ×0.001 mm signed 32-bit)"},
+            {"address": REG_ABS_Z_HI,      "description": "Absolute Z – high word (R10005)"},
         ],
         "coils": [
             {"address": COIL_CYCLE_START, "name": "cycle_start",  "description": "Cycle Start"},
@@ -562,6 +627,9 @@ def api_diagnostics():
             "Stopper status is read from R20204 (PLC→HMI), command written to R20104 (HMI→PLC) via /api/stopper",
             "Coil 5 (vacuum_pump) controls Vacuum Pump 1 – labelled 'Coolant' in the generic LNC firmware",
             "Coil 8 (aspiration) address is unverified – use /api/scan to confirm it responds before relying on it",
+            "Absolute machine coordinates are in R10000–R10005 (0-based); Modbus 1-based addresses: 10001–10006",
+            "G-code current line is at R8102 (0-based); address is unverified – confirm with /api/scan on your controller",
+            "R0–R999 are user registers (empty unless PLC logic copies data into them); R8000–R8999 are system-status registers; R10000–R10500 hold axis coordinates",
         ],
     })
 
@@ -748,6 +816,65 @@ def api_scan():
                 })
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Stopper status regs exception: {exc}")
+
+        # --- G-code current line (R8102, system-status range) ---
+        try:
+            rr = client.read_holding_registers(address=REG_GCODE_LINE, count=1, device_id=scan_unit)
+            if rr.isError():
+                results["errors"].append(f"G-code line reg {REG_GCODE_LINE} error: {rr}")
+            else:
+                results["scans"].append({
+                    "type": "holding_register",
+                    "address": REG_GCODE_LINE,
+                    "description": "G-code current line number (R8102, system-status range)",
+                    "raw_value": rr.registers[0],
+                    "hex": hex(rr.registers[0]),
+                })
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"G-code line reg exception: {exc}")
+
+        # --- Absolute machine coordinates R10000–R10005 (3 axes × 32-bit DWord) ---
+        _abs_desc = {
+            REG_ABS_X_LO: "Absolute X – low  word (R10000; 1-based: 10001)",
+            REG_ABS_X_HI: "Absolute X – high word (R10001; 1-based: 10002)",
+            REG_ABS_Y_LO: "Absolute Y – low  word (R10002; 1-based: 10003)",
+            REG_ABS_Y_HI: "Absolute Y – high word (R10003; 1-based: 10004)",
+            REG_ABS_Z_LO: "Absolute Z – low  word (R10004; 1-based: 10005)",
+            REG_ABS_Z_HI: "Absolute Z – high word (R10005; 1-based: 10006)",
+        }
+        try:
+            rr = client.read_holding_registers(address=REG_ABS_X_LO, count=6, device_id=scan_unit)
+            if rr.isError():
+                results["errors"].append(f"Absolute coord regs {REG_ABS_X_LO}-{REG_ABS_Z_HI} error: {rr}")
+            else:
+                for offset, val in enumerate(rr.registers):
+                    addr = REG_ABS_X_LO + offset
+                    results["scans"].append({
+                        "type": "holding_register",
+                        "address": addr,
+                        "description": _abs_desc.get(addr, ""),
+                        "raw_value": val,
+                        "hex": hex(val),
+                    })
+                abs_x = _regs_to_int32(rr.registers[0], rr.registers[1]) / 1000.0
+                abs_y = _regs_to_int32(rr.registers[2], rr.registers[3]) / 1000.0
+                abs_z = _regs_to_int32(rr.registers[4], rr.registers[5]) / 1000.0
+                results["scans"].append({
+                    "type": "decoded",
+                    "address": "R10000–R10005 (abs coords)",
+                    "description": f"Abs X={abs_x:.3f} mm  Abs Y={abs_y:.3f} mm  Abs Z={abs_z:.3f} mm",
+                    "raw_value": "",
+                    "hex": "",
+                })
+                if all(v == 0 for v in rr.registers):
+                    results["diagnosis"].append(
+                        "⚠ Absolute coordinate registers R10000–R10005 returned all zeros. "
+                        "This is normal when the machine is at the home/zero position. "
+                        "If the machine has moved, the PLC program may not map these addresses – "
+                        "verify with your machine documentation."
+                    )
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Absolute coord regs exception: {exc}")
 
         # --- Alternate unit-ID probe: if primary scan all-zeros, try unit IDs 0 and 1 ---
         if main_all_zero and diag_all_zero:
