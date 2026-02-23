@@ -293,6 +293,163 @@ def api_command():
     return jsonify({"ok": True, "command": command, "value": value})
 
 
+@app.route("/api/diagnostics")
+def api_diagnostics():
+    """
+    Return connection configuration, the full register/coil map, and the
+    last Modbus error so operators can quickly identify endpoint problems.
+    """
+    with _state_lock:
+        connected = _state.connected
+        last_error = _state.last_error
+        conn_status = _state.conn_status
+        last_update = _state.last_update
+
+    register_map = {
+        "holding_registers": [
+            {"address": REG_STATUS,     "description": "Machine status word (bit flags)"},
+            {"address": REG_X_LO,       "description": "X position – low word (×0.001 mm, signed 32-bit with next reg)"},
+            {"address": REG_X_HI,       "description": "X position – high word"},
+            {"address": REG_Y_LO,       "description": "Y position – low word"},
+            {"address": REG_Y_HI,       "description": "Y position – high word"},
+            {"address": REG_Z_LO,       "description": "Z position – low word"},
+            {"address": REG_Z_HI,       "description": "Z position – high word"},
+            {"address": REG_SPINDLE,    "description": "Spindle speed (RPM)"},
+            {"address": REG_FEED,       "description": "Feed rate (mm/min)"},
+            {"address": REG_ALARM,      "description": "Active alarm code"},
+            {"address": REG_PROGRAM,    "description": "Program number"},
+            {"address": REG_LOT_COUNT,  "description": "Lot count (parts produced)"},
+            {"address": REG_LOT_TARGET, "description": "Lot target"},
+            {"address": REG_LOT_ID,     "description": "Lot ID"},
+            {"address": REG_CONN_STATUS,"description": "Connection status (OpenPortResultAddr 5001, 0-based PDU)"},
+        ],
+        "coils": [
+            {"address": COIL_CYCLE_START, "name": "cycle_start",  "description": "Cycle Start"},
+            {"address": COIL_FEED_HOLD,   "name": "feed_hold",    "description": "Feed Hold"},
+            {"address": COIL_RESET,       "name": "reset",        "description": "Reset / Clear Alarm"},
+            {"address": COIL_SPINDLE_CW,  "name": "spindle_cw",   "description": "Spindle CW"},
+            {"address": COIL_SPINDLE_CCW, "name": "spindle_ccw",  "description": "Spindle CCW"},
+            {"address": COIL_COOLANT,     "name": "coolant",      "description": "Coolant ON"},
+            {"address": COIL_ESTOP,       "name": "estop",        "description": "Software E-Stop"},
+            {"address": COIL_LOT_RESET,   "name": "lot_reset",    "description": "Lot Reset"},
+        ],
+        "status_bits": [
+            {"bit": 0, "description": "Emergency Stop active"},
+            {"bit": 1, "description": "Alarm active"},
+            {"bit": 2, "description": "Cycle running"},
+            {"bit": 3, "description": "Feed Hold active"},
+            {"bit": 4, "description": "Homing in progress"},
+            {"bit": 5, "description": "Spindle running"},
+            {"bit": 6, "description": "Program paused"},
+            {"bit": 7, "description": "Door open"},
+        ],
+    }
+
+    return jsonify({
+        "config": {
+            "modbus_host": MODBUS_HOST,
+            "modbus_port": MODBUS_PORT,
+            "modbus_unit_id": MODBUS_UNIT,
+            "poll_interval_s": POLL_INTERVAL,
+            "authentication": "none – Modbus TCP has no built-in authentication",
+        },
+        "connection": {
+            "connected": connected,
+            "last_error": last_error or None,
+            "conn_status_register": conn_status,
+            "last_update": last_update or None,
+        },
+        "register_map": register_map,
+        "hints": [
+            "Ensure the LNC controller has Modbus TCP enabled: parameter 45010 = 1",
+            "Default port is 502 (configurable in Eth_ModbusServerTCP.ini on the controller)",
+            "Unit ID is typically 1; change MODBUS_UNIT env-var if your controller uses a different slave ID",
+            "Register addresses are 0-based (Modbus PDU). Some tools display 1-based addresses (add 1).",
+            "Use /api/scan to read raw register values and verify the endpoint mapping",
+        ],
+    })
+
+
+@app.route("/api/scan")
+def api_scan():
+    """
+    Open a fresh Modbus connection and read key register ranges, returning
+    raw values. Useful for diagnosing which endpoints actually respond and
+    verifying register assignments without relying on the polling thread.
+    """
+    results: dict = {
+        "config": {
+            "modbus_host": MODBUS_HOST,
+            "modbus_port": MODBUS_PORT,
+            "modbus_unit_id": MODBUS_UNIT,
+        },
+        "scans": [],
+        "errors": [],
+    }
+
+    client = ModbusTcpClient(host=MODBUS_HOST, port=MODBUS_PORT)
+    try:
+        if not client.connect():
+            results["errors"].append(
+                f"Cannot connect to {MODBUS_HOST}:{MODBUS_PORT} – "
+                "check host/port and that parameter 45010=1 on the controller"
+            )
+            return jsonify(results)
+
+        # --- Holding registers 0–13 (main data block) ---
+        try:
+            rr = client.read_holding_registers(address=0, count=14, device_id=MODBUS_UNIT)
+            if rr.isError():
+                results["errors"].append(f"Holding regs 0-13 error: {rr}")
+            else:
+                for i, val in enumerate(rr.registers):
+                    results["scans"].append({
+                        "type": "holding_register",
+                        "address": i,
+                        "raw_value": val,
+                        "hex": hex(val),
+                    })
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Holding regs 0-13 exception: {exc}")
+
+        # --- Connection status register 5000 ---
+        try:
+            rr = client.read_holding_registers(address=REG_CONN_STATUS, count=1, device_id=MODBUS_UNIT)
+            if rr.isError():
+                results["errors"].append(f"Holding reg {REG_CONN_STATUS} error: {rr}")
+            else:
+                results["scans"].append({
+                    "type": "holding_register",
+                    "address": REG_CONN_STATUS,
+                    "raw_value": rr.registers[0],
+                    "hex": hex(rr.registers[0]),
+                })
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Holding reg {REG_CONN_STATUS} exception: {exc}")
+
+        # --- Coils 0–7 ---
+        try:
+            rc = client.read_coils(address=0, count=8, device_id=MODBUS_UNIT)
+            if rc.isError():
+                results["errors"].append(f"Coils 0-7 error: {rc}")
+            else:
+                for i, val in enumerate(rc.bits[:8]):
+                    results["scans"].append({
+                        "type": "coil",
+                        "address": i,
+                        "raw_value": int(val),
+                    })
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Coils 0-7 exception: {exc}")
+
+    except Exception as exc:  # noqa: BLE001
+        results["errors"].append(f"Unexpected error during scan: {exc}")
+    finally:
+        client.close()
+
+    return jsonify(results)
+
+
 @app.route("/api/lot/set_target", methods=["POST"])
 def api_set_lot_target():
     """

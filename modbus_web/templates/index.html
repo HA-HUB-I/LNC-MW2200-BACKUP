@@ -294,6 +294,73 @@
       font-size: .68rem;
       color: var(--muted);
     }
+
+    #conn-error-bar {
+      display: none;
+      margin: .4rem 1.5rem 0;
+      padding: .4rem .8rem;
+      background: #7f1d1d44;
+      border: 1px solid var(--red);
+      border-radius: 8px;
+      color: var(--red);
+      font-size: .72rem;
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    /* ── Diagnostics card ─────────────────────────────────────────── */
+    #error-detail {
+      display: none;
+      margin-top: .5rem;
+      padding: .4rem .6rem;
+      background: #7f1d1d44;
+      border: 1px solid var(--red);
+      border-radius: 6px;
+      color: var(--red);
+      font-size: .72rem;
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    .diag-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .72rem;
+      margin-top: .5rem;
+    }
+
+    .diag-table th, .diag-table td {
+      text-align: left;
+      padding: .25rem .4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .diag-table th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .diag-table td:first-child {
+      font-family: monospace;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    #scan-output {
+      display: none;
+      margin-top: .75rem;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    #scan-errors {
+      margin-top: .4rem;
+      font-size: .72rem;
+      color: var(--red);
+      font-family: monospace;
+    }
   </style>
 </head>
 <body>
@@ -308,6 +375,7 @@
 </header>
 
 <div id="alarm-banner"></div>
+<div id="conn-error-bar"></div>
 
 <main>
 
@@ -404,6 +472,44 @@
     </div>
   </div>
 
+  <!-- Diagnostics -->
+  <div class="card" style="grid-column: span 2">
+    <h2>Diagnostics &amp; Register Map</h2>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem">
+      Use the scan to read raw Modbus values and verify endpoint mapping.
+      Authentication: <strong style="color:var(--text)">none</strong> – Modbus TCP has no built-in auth.
+      Enable Modbus TCP on the controller: <code>parameter 45010 = 1</code>.
+    </p>
+    <button class="btn" style="width:auto;padding:.4rem 1rem" onclick="runScan()">🔍 Scan Registers</button>
+    <div id="scan-output">
+      <table class="diag-table" id="scan-table">
+        <thead><tr><th>Type</th><th>Address</th><th>Raw Value</th><th>Hex</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="scan-errors"></div>
+    </div>
+    <table class="diag-table" style="margin-top:.75rem">
+      <thead><tr><th>Reg (0-based)</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td>Machine status word (bit flags)</td></tr>
+        <tr><td>1–2</td><td>X position – signed 32-bit lo/hi words (×0.001 mm)</td></tr>
+        <tr><td>3–4</td><td>Y position</td></tr>
+        <tr><td>5–6</td><td>Z position</td></tr>
+        <tr><td>7</td><td>Spindle speed (RPM)</td></tr>
+        <tr><td>8</td><td>Feed rate (mm/min)</td></tr>
+        <tr><td>9</td><td>Active alarm code</td></tr>
+        <tr><td>10</td><td>Program number</td></tr>
+        <tr><td>11</td><td>Lot count (parts produced)</td></tr>
+        <tr><td>12</td><td>Lot target</td></tr>
+        <tr><td>13</td><td>Lot ID</td></tr>
+        <tr><td>5000</td><td>Connection status (OpenPortResultAddr)</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">
+      Coils (0-based): 0=Cycle Start, 1=Feed Hold, 2=Reset, 3=Spindle CW, 4=Spindle CCW, 5=Coolant, 6=E-Stop, 7=Lot Reset
+    </p>
+  </div>
+
 </main>
 
 <footer id="footer-ts">Last update: —</footer>
@@ -439,12 +545,20 @@
       // Connection badge
       const badge = document.getElementById('conn-badge');
       const connText = document.getElementById('conn-text');
+      const errBar = document.getElementById('conn-error-bar');
       if (d.connected) {
         badge.className = 'connected';
         connText.textContent = 'Connected';
+        errBar.style.display = 'none';
       } else {
         badge.className = 'error';
         connText.textContent = 'Disconnected';
+        if (d.last_error) {
+          errBar.textContent = '⚠ ' + d.last_error;
+          errBar.style.display = 'block';
+        } else {
+          errBar.style.display = 'none';
+        }
       }
 
       // Status flags
@@ -536,6 +650,33 @@
       }
     } catch (e) {
       showToast('✗ Network error', false);
+    }
+  }
+
+  async function runScan() {
+    const out = document.getElementById('scan-output');
+    const tbody = document.querySelector('#scan-table tbody');
+    const errDiv = document.getElementById('scan-errors');
+    out.style.display = 'block';
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">Scanning…</td></tr>';
+    errDiv.textContent = '';
+    try {
+      const res = await fetch('/api/scan');
+      const data = await res.json();
+      tbody.innerHTML = '';
+      for (const row of data.scans) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${row.type}</td><td>${row.address}</td><td>${row.raw_value}</td><td>${row.hex || ''}</td>`;
+        tbody.appendChild(tr);
+      }
+      if (tbody.children.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">No registers read</td></tr>';
+      }
+      if (data.errors && data.errors.length) {
+        errDiv.textContent = 'Errors: ' + data.errors.join(' | ');
+      }
+    } catch (e) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--red)">Scan failed: ' + e.message + '</td></tr>';
     }
   }
 
