@@ -598,8 +598,8 @@
     <table class="diag-table" style="margin-top:.75rem">
       <thead><tr><th>Reg (0-based)</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td>0</td><td>Machine status word (bit flags)</td></tr>
-        <tr><td>1–2</td><td>X position – signed 32-bit lo/hi words (×0.001 mm)</td></tr>
+        <tr><td>0</td><td>Machine status word (bit flags) – also check addresses 32–45 if zeros (RegisterMode=-32)</td></tr>
+        <tr><td>1–2</td><td>X position – signed 32-bit lo/hi words (×0.001 mm) – also decoded as float32 in /api/scan</td></tr>
         <tr><td>3–4</td><td>Y position</td></tr>
         <tr><td>5–6</td><td>Z position</td></tr>
         <tr><td>7</td><td>Spindle speed (RPM)</td></tr>
@@ -624,6 +624,8 @@
         <tr><td>10000+10001</td><td>Absolute X – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10001–10002</td></tr>
         <tr><td>10002+10003</td><td>Absolute Y – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10003–10004</td></tr>
         <tr><td>10004+10005</td><td>Absolute Z – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10005–10006</td></tr>
+        <tr><td>32–45</td><td>Possible alternate location for main data (RegisterMode=-32 in Eth_ModbusServerTCP.ini may shift user registers by +32)</td></tr>
+        <tr><td>FC2: 0–15</td><td>Discrete inputs (FC2/read_discrete_inputs) – physical sensor / limit-switch states; check /api/scan discrete_input rows</td></tr>
       </tbody>
     </table>
     <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">

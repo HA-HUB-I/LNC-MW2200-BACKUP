@@ -255,6 +255,16 @@ def _regs_to_int32(lo: int, hi: int) -> int:
     return struct.unpack(">i", struct.pack(">I", raw))[0]
 
 
+def _regs_to_float32(lo: int, hi: int) -> float:
+    """Decode two 16-bit Modbus registers as an IEEE 754 single-precision float.
+
+    Some CNC controllers store axis coordinates as float32 rather than scaled
+    int32.  Returns NaN if the bit pattern is invalid.
+    """
+    raw = (hi << 16) | (lo & 0xFFFF)
+    return struct.unpack(">f", struct.pack(">I", raw))[0]
+
+
 # ---------------------------------------------------------------------------
 # Polling thread
 # ---------------------------------------------------------------------------
@@ -630,6 +640,11 @@ def api_diagnostics():
             "Absolute machine coordinates are in R10000–R10005 (0-based); Modbus 1-based addresses: 10001–10006",
             "G-code current line is at R8102 (0-based); address is unverified – confirm with /api/scan on your controller",
             "R0–R999 are user registers (empty unless PLC logic copies data into them); R8000–R8999 are system-status registers; R10000–R10500 hold axis coordinates",
+            "RegisterMode=-32 in Eth_ModbusServerTCP.ini: this parameter may shift user register addresses by +32 "
+            "so that data the PLC writes to R0 appears at Modbus address 32. If holding registers 0-13 are all zero "
+            "but addresses 32-45 contain data, update the REG_* constants in app.py to add 32.",
+            "Sensor/limit-switch states may be mapped as discrete inputs (FC2/read_discrete_inputs) rather than "
+            "as holding registers or coils. Use /api/scan to check the discrete_input(FC2) rows.",
         ],
     })
 
@@ -760,6 +775,66 @@ def api_scan():
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Input regs 0-13 (FC4) exception: {exc}")
 
+        # --- Holding registers 32–45 (RegisterMode=-32 offset theory) ---
+        # The machine's Eth_ModbusServerTCP.ini contains RegisterMode=-32.
+        # This parameter often means user R-registers are exposed at Modbus
+        # address = LNC_R_number + 32, so the main data block that the code
+        # expects at 0–13 may actually reside at addresses 32–45.
+        try:
+            rr_off = client.read_holding_registers(address=32, count=14, device_id=scan_unit)
+            if rr_off.isError():
+                results["errors"].append(f"RegisterMode-offset regs 32-45 error: {rr_off}")
+            else:
+                offset_any_nonzero = any(v != 0 for v in rr_off.registers)
+                for i, val in enumerate(rr_off.registers):
+                    results["scans"].append({
+                        "type": "holding_register(addr+32)",
+                        "address": 32 + i,
+                        "description": f"[RegisterMode=-32 probe] {_main_desc.get(i, '')}",
+                        "raw_value": val,
+                        "hex": hex(val),
+                    })
+                if offset_any_nonzero and main_all_zero:
+                    results["diagnosis"].append(
+                        "✓ Non-zero data found at addresses 32-45 (RegisterMode=-32 offset)! "
+                        "Eth_ModbusServerTCP.ini has RegisterMode=-32, meaning user R-registers "
+                        "are shifted by +32 in the Modbus address space. "
+                        "Update REG_STATUS→32, REG_X_LO→33, REG_X_HI→34, REG_Y_LO→35, "
+                        "REG_Y_HI→36, REG_Z_LO→37, REG_Z_HI→38, REG_SPINDLE→39, "
+                        "REG_FEED→40, REG_ALARM→41, REG_PROGRAM→42, REG_LOT_COUNT→43, "
+                        "REG_LOT_TARGET→44, REG_LOT_ID→45 in app.py."
+                    )
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"RegisterMode-offset regs 32-45 exception: {exc}")
+
+        # --- Discrete inputs 0–15 (FC2) – sensor / limit-switch states ---
+        # Many CNC controllers map physical sensors (limit switches, door sensors,
+        # vacuum pressure switches, etc.) as Modbus discrete inputs (FC2) rather
+        # than as coils (FC1) or holding registers (FC3).
+        try:
+            rdi = client.read_discrete_inputs(address=0, count=16, device_id=scan_unit)
+            if rdi.isError():
+                results["errors"].append(f"Discrete inputs 0-15 (FC2) error: {rdi}")
+            else:
+                di_any_nonzero = any(rdi.bits[:16])
+                _di_desc = {i: f"Sensor/limit-switch input {i}" for i in range(16)}
+                for i, val in enumerate(rdi.bits[:16]):
+                    results["scans"].append({
+                        "type": "discrete_input(FC2)",
+                        "address": i,
+                        "description": _di_desc.get(i, ""),
+                        "raw_value": int(val),
+                        "hex": "",
+                    })
+                if di_any_nonzero:
+                    results["diagnosis"].append(
+                        "ℹ Discrete inputs (FC2) contain non-zero bits. "
+                        "Physical sensor / limit-switch states are mapped here. "
+                        "Check bit positions against your machine's I/O wiring diagram."
+                    )
+        except Exception as exc:  # noqa: BLE001
+            results["errors"].append(f"Discrete inputs 0-15 (FC2) exception: {exc}")
+
         # --- Coils 0–8 ---
         _coil_desc = {
             0: "Cycle Start",
@@ -833,7 +908,11 @@ def api_scan():
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"G-code line reg exception: {exc}")
 
-        # --- Absolute machine coordinates R10000–R10005 (3 axes × 32-bit DWord) ---
+        # --- Absolute machine coordinates R10000–R10011 (extended, 12 registers) ---
+        # Read 12 registers instead of 6 to cover cases where the Z hi-word is
+        # further than expected (e.g. if each axis takes 4 registers, or if
+        # LNC uses a different stride).  Also decodes each 32-bit pair as both
+        # signed int32 (×0.001 mm) and IEEE 754 float32 for comparison.
         _abs_desc = {
             REG_ABS_X_LO: "Absolute X – low  word (R10000; 1-based: 10001)",
             REG_ABS_X_HI: "Absolute X – high word (R10001; 1-based: 10002)",
@@ -842,71 +921,126 @@ def api_scan():
             REG_ABS_Z_LO: "Absolute Z – low  word (R10004; 1-based: 10005)",
             REG_ABS_Z_HI: "Absolute Z – high word (R10005; 1-based: 10006)",
         }
+        MAX_REASONABLE_COORD_MM = 5000.0   # flag coords beyond ±5 m as suspect
         try:
-            rr = client.read_holding_registers(address=REG_ABS_X_LO, count=6, device_id=scan_unit)
+            rr = client.read_holding_registers(address=REG_ABS_X_LO, count=12, device_id=scan_unit)
             if rr.isError():
-                results["errors"].append(f"Absolute coord regs {REG_ABS_X_LO}-{REG_ABS_Z_HI} error: {rr}")
+                results["errors"].append(f"Absolute coord regs {REG_ABS_X_LO}+ error: {rr}")
             else:
                 for offset, val in enumerate(rr.registers):
                     addr = REG_ABS_X_LO + offset
                     results["scans"].append({
                         "type": "holding_register",
                         "address": addr,
-                        "description": _abs_desc.get(addr, ""),
+                        "description": _abs_desc.get(addr, f"Abs coord extended R{addr}"),
                         "raw_value": val,
                         "hex": hex(val),
                     })
+                # Decode first 6 registers as the standard 3-axis int32 pairs
                 abs_x = _regs_to_int32(rr.registers[0], rr.registers[1]) / 1000.0
                 abs_y = _regs_to_int32(rr.registers[2], rr.registers[3]) / 1000.0
                 abs_z = _regs_to_int32(rr.registers[4], rr.registers[5]) / 1000.0
                 results["scans"].append({
-                    "type": "decoded",
+                    "type": "decoded(int32×0.001mm)",
                     "address": "R10000–R10005 (abs coords)",
                     "description": f"Abs X={abs_x:.3f} mm  Abs Y={abs_y:.3f} mm  Abs Z={abs_z:.3f} mm",
                     "raw_value": "",
                     "hex": "",
                 })
-                if all(v == 0 for v in rr.registers):
+                # Alternative: decode as IEEE 754 float32 (some LNC firmware versions)
+                abs_x_f = _regs_to_float32(rr.registers[0], rr.registers[1])
+                abs_y_f = _regs_to_float32(rr.registers[2], rr.registers[3])
+                abs_z_f = _regs_to_float32(rr.registers[4], rr.registers[5])
+                results["scans"].append({
+                    "type": "decoded(float32-alt)",
+                    "address": "R10000–R10005 (abs coords, float32)",
+                    "description": (
+                        f"Abs X={abs_x_f:.3f}  Abs Y={abs_y_f:.3f}  Abs Z={abs_z_f:.3f} "
+                        "(alternative float32 interpretation – ignore if values are NaN/inf)"
+                    ),
+                    "raw_value": "",
+                    "hex": "",
+                })
+                # Alternative: decode with hi/lo word order swapped (big-endian word order)
+                abs_x_sw = _regs_to_int32(rr.registers[1], rr.registers[0]) / 1000.0
+                abs_y_sw = _regs_to_int32(rr.registers[3], rr.registers[2]) / 1000.0
+                abs_z_sw = _regs_to_int32(rr.registers[5], rr.registers[4]) / 1000.0
+                results["scans"].append({
+                    "type": "decoded(int32-swapped)",
+                    "address": "R10000–R10005 (abs coords, hi-word first)",
+                    "description": (
+                        f"Abs X={abs_x_sw:.3f} mm  Abs Y={abs_y_sw:.3f} mm  Abs Z={abs_z_sw:.3f} mm "
+                        "(alternative: if LNC stores high word at lower address)"
+                    ),
+                    "raw_value": "",
+                    "hex": "",
+                })
+                if all(v == 0 for v in rr.registers[:6]):
                     results["diagnosis"].append(
                         "⚠ Absolute coordinate registers R10000–R10005 returned all zeros. "
                         "This is normal when the machine is at the home/zero position. "
                         "If the machine has moved, the PLC program may not map these addresses – "
                         "verify with your machine documentation."
                     )
+                else:
+                    bad_coords = []
+                    if abs(abs_x) > MAX_REASONABLE_COORD_MM:
+                        bad_coords.append(f"X={abs_x:.3f} mm")
+                    if abs(abs_y) > MAX_REASONABLE_COORD_MM:
+                        bad_coords.append(f"Y={abs_y:.3f} mm")
+                    if abs(abs_z) > MAX_REASONABLE_COORD_MM:
+                        bad_coords.append(f"Z={abs_z:.3f} mm")
+                    if bad_coords:
+                        results["diagnosis"].append(
+                            f"⚠ Decoded abs coordinates look unreasonably large: "
+                            f"{', '.join(bad_coords)}. Possible causes: "
+                            "(1) Word order is swapped – the LNC may put the high word FIRST "
+                            "(see the decoded(int32-swapped) row above for the swapped result). "
+                            "(2) The firmware stores coords as float32 – see the decoded(float32-alt) row above. "
+                            "(3) The register addresses are wrong and these are not coordinate registers. "
+                            "(4) One of the 16-bit words belongs to a different variable "
+                            "(check the extended rows R10006–R10011 for the actual hi word)."
+                        )
         except Exception as exc:  # noqa: BLE001
             results["errors"].append(f"Absolute coord regs exception: {exc}")
 
-        # --- Alternate unit-ID probe: if primary scan all-zeros, try unit IDs 0 and 1 ---
+        # --- Alternate unit-ID probe: if primary scan all-zeros, try 0, 1, 2, 255 ---
         if main_all_zero and diag_all_zero:
-            alt_uid = 0 if scan_unit != 0 else 1
+            alt_uids = [uid for uid in [0, 1, 2, 255] if uid != scan_unit]
             results["diagnosis"].append(
                 f"⚠ All holding registers returned 0 with unit_id={scan_unit}. "
-                f"Probing alternate unit_id={alt_uid} to check for a unit-ID mismatch…"
+                f"Probing alternate unit_ids {alt_uids} to check for a unit-ID mismatch…"
             )
-            try:
-                rr_alt = client.read_holding_registers(address=0, count=14, device_id=alt_uid)
-                if not rr_alt.isError() and any(v != 0 for v in rr_alt.registers):
-                    results["diagnosis"].append(
-                        f"✓ Non-zero data found with unit_id={alt_uid}! "
-                        f"Restart the app with MODBUS_UNIT={alt_uid} (set the environment variable)."
-                    )
-                    for i, val in enumerate(rr_alt.registers):
-                        results["scans"].append({
-                            "type": f"holding_register(unit_id={alt_uid})",
-                            "address": i,
-                            "description": _main_desc.get(i, ""),
-                            "raw_value": val,
-                            "hex": hex(val),
-                        })
-                else:
-                    results["diagnosis"].append(
-                        f"✗ unit_id={alt_uid} also returned all zeros or an error. "
-                        "Possible causes: machine is genuinely idle (at home/zero position), "
-                        "wrong MODBUS_HOST IP, Modbus TCP not enabled (parameter 45010 must be 1), "
-                        "or the PLC program does not map these addresses."
-                    )
-            except Exception as exc:  # noqa: BLE001
-                results["diagnosis"].append(f"Alt unit-ID probe exception: {exc}")
+            found_alt = False
+            for alt_uid in alt_uids:
+                try:
+                    rr_alt = client.read_holding_registers(address=0, count=14, device_id=alt_uid)
+                    if not rr_alt.isError() and any(v != 0 for v in rr_alt.registers):
+                        results["diagnosis"].append(
+                            f"✓ Non-zero data found with unit_id={alt_uid}! "
+                            f"Restart the app with MODBUS_UNIT={alt_uid} (set the environment variable)."
+                        )
+                        for i, val in enumerate(rr_alt.registers):
+                            results["scans"].append({
+                                "type": f"holding_register(unit_id={alt_uid})",
+                                "address": i,
+                                "description": _main_desc.get(i, ""),
+                                "raw_value": val,
+                                "hex": hex(val),
+                            })
+                        found_alt = True
+                        break
+                except Exception as exc:  # noqa: BLE001
+                    results["diagnosis"].append(f"Alt unit-ID {alt_uid} probe exception: {exc}")
+            if not found_alt:
+                results["diagnosis"].append(
+                    f"✗ unit_ids {alt_uids} also returned all zeros or errors. "
+                    "Possible causes: machine is genuinely idle (at home/zero position), "
+                    "wrong MODBUS_HOST IP, Modbus TCP not enabled (parameter 45010 must be 1), "
+                    "the PLC program does not map data to addresses 0-13 "
+                    "(R0-R999 are user registers – the PLC must explicitly write data there), "
+                    "or data is at addresses 32-45 due to RegisterMode=-32 (see probe above)."
+                )
 
     except Exception as exc:  # noqa: BLE001
         results["errors"].append(f"Unexpected error during scan: {exc}")
