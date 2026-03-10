@@ -76,6 +76,50 @@ Moving from an LNC MW2200A controller to Mach3 is not just a software adjustment
    functionality requirements, preferences for the Mach3 interface, or when there are problems with the existing controller. This is a major undertaking that requires
   in-depth knowledge of electronics and CNC systems.
 
+## Resetting Motor Positions After Gantry Displacement
+
+**Question (БГ):** Има ли настройка която да ресетва моторите или тяхната позиция при разместване на портала?
+
+**Answer:** Yes. When the gantry (portal) is physically displaced — for example due to a power loss, mechanical shock, or manual movement — the controller loses track of the motor positions. The correct way to restore accurate position tracking is to perform a **Return to Origin (Homing)** sequence. This resets all axis positions relative to the physical home switches.
+
+### How It Works
+
+The LNC MW2200A uses the following parameters to control the homing behaviour (found in `disk4/machine/param.txt`):
+
+| Parameter | Axis | Current Value | Description |
+|-----------|------|---------------|-------------|
+| `77000`   | 1 (X) | `2` | Homing method: `2` = DOG + INDEX (uses home switch and encoder index pulse) |
+| `77001`   | 2 (Y) | `2` | Homing method: `2` = DOG + INDEX |
+| `77002`   | 3 (Z) | `2` | Homing method: `2` = DOG + INDEX |
+| `77064`   | 1 (X) | `0` | Origin offset after homing (LU) |
+| `77065`   | 2 (Y) | `0` | Origin offset after homing (LU) |
+| `77066`   | 3 (Z) | `0` | Origin offset after homing (LU) |
+| `56031.0` | 1 (X) | `0` | Set absolute machine coordinate after homing (`0`=off, `1`=on) |
+| `56031.1` | 2 (Y) | `0` | Set absolute machine coordinate after homing (`0`=off, `1`=on) |
+| `56031.2` | 3 (Z) | `0` | Set absolute machine coordinate after homing (`0`=off, `1`=on) |
+| `56128`   | 1 (X) | `0` | Absolute coordinate value assigned after homing (LU) |
+| `56129`   | 2 (Y) | `0` | Absolute coordinate value assigned after homing (LU) |
+| `56130`   | 3 (Z) | `0` | Absolute coordinate value assigned after homing (LU) |
+| `71496.x` | All  | `0` | Mechanical coordinate compensation when synchronized follow control starts (`0`=off, `1`=on) |
+
+### Steps to Reset Motor Positions After Gantry Displacement
+
+1. **Power on the machine** and wait for the controller to boot fully.
+2. **Check the gantry position** visually. If the gantry or any axis is in an unexpected position and could cause a collision during homing, engage the Emergency Stop, manually move the affected axis to a safe starting position, then release the Emergency Stop before continuing.
+3. **Navigate to the JOG / REF (Reference / Return to Origin) mode** on the HMI.
+4. **Start the Return to Origin (REF) sequence** for all axes. The machine will move each axis toward its home switch and re-establish the zero position.
+   - Axis 1 (X), Axis 2 (Y) and Axis 3 (Z) are configured to use **DOG + INDEX** homing (parameter `77000`–`77002` = `2`), which provides the most accurate and repeatable home position.
+5. Once homing completes, all motor position counters are reset to the machine origin. The controller now has a known, accurate position for all axes.
+
+### Gantry Squaring (Dual-Drive Y-Axis)
+
+If the machine uses a **tandem (dual-motor) Y-axis** and the gantry has become physically skewed (one side displaced further than the other):
+
+- Parameter **`71496.x`** (`同步追随控制启动时机械座标补偿`) controls whether the controller automatically compensates for the mechanical coordinate difference between the master and follower axis when synchronized follow control starts. Here `.x` is the zero-based axis bit index (e.g., `.0` = Axis 1, `.1` = Axis 2). Enable this (`1`) for the **follower Y axis** (the slave motor on the opposite side of the gantry from the master Y). This allows the controller to absorb the position offset electronically during homing, effectively squaring the gantry without manual mechanical adjustment.
+- After enabling `71496.x` for the follower axis, perform the **Return to Origin** sequence. Each side of the gantry will home independently against its own home switch, correcting any skew.
+
+**Note:** Always mechanically inspect the gantry after any displacement event before resuming cutting operations. A homing sequence corrects the position registers but does not fix physical damage to the machine structure.
+
 ## Complete to backup.tgz
 
 To create a complete backup of the configuration files, you can use the following command:
