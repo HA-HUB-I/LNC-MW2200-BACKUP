@@ -70,13 +70,15 @@ Coil map (discrete outputs, 0-based):
 """
 
 import os
+import pathlib
+import shutil
 import struct
 import threading
 import time
 from dataclasses import dataclass, field, asdict
 from typing import Optional
 
-from flask import Flask, jsonify, render_template, request, abort
+from flask import Flask, jsonify, render_template, request, abort, send_from_directory
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
@@ -90,6 +92,15 @@ POLL_INTERVAL = float(os.environ.get("POLL_INTERVAL", "0.5"))   # seconds
 WEB_HOST = os.environ.get("WEB_HOST", "0.0.0.0")
 WEB_PORT = int(os.environ.get("WEB_PORT", "5000"))
 WEB_DEBUG = os.environ.get("WEB_DEBUG", "false").lower() == "true"
+
+# NC program file loading
+# NC_PROGRAMS_PATH – if set, uploaded .nc files are also copied here (e.g. SMB share to the controller)
+# Example: NC_PROGRAMS_PATH=\\192.168.0.113\D\Program   (Windows UNC) or /mnt/cnc/Program (Linux mount)
+NC_PROGRAMS_PATH = os.environ.get("NC_PROGRAMS_PATH", "")
+# Local folder where uploads are always saved regardless of NC_PROGRAMS_PATH
+_UPLOAD_DIR = pathlib.Path(__file__).parent / "uploads"
+_UPLOAD_DIR.mkdir(exist_ok=True)
+_NC_EXTENSIONS = {".nc", ".cnc", ".tap", ".prg", ".txt", ".gcode"}
 
 # Holding register start addresses (0-based)
 REG_STATUS = 0
@@ -147,6 +158,10 @@ REG_VELOCITY = 1004   # Instantaneous velocity of the active axis (mm/min)
 # Actual spindle RPM confirmed live at R1007 (18000 during spindle operation)
 # REG_SPINDLE (=7) in the main 0–13 block is NOT the spindle speed on this machine
 REG_SPINDLE_RPM = 1007   # Live spindle speed (RPM) – confirmed via debug session
+
+# Tool number register (best-effort; LNC stores active tool number in R9000 area)
+# Not yet confirmed on this machine – will show 0 until a live capture confirms it
+REG_TOOL_NUMBER = 9000   # Active tool number (unverified – read best-effort)
 
 # Absolute machine coordinate registers (R10000–R10500 range).
 # Each axis is a signed 32-bit DWord split across two 16-bit lo/hi holding registers.
@@ -307,6 +322,7 @@ class MachineState:
     left_pos_on:     bool = False   # Coils {15,19} – left stopper extended
     dust_cover_on:   bool = False   # Coils 35+36 – dust cover open (both ON = open)
     spindle_on:      bool = False   # Coils 7+8 – spindle motor running (live coils)
+    tool_number:     int  = 0       # Active tool number (R9000 – best-effort, unverified)
 
     def decode_status_word(self) -> None:
         sw = self.status_word
@@ -502,6 +518,17 @@ class ModbusPoller(threading.Thread):
             except Exception:  # noqa: BLE001
                 pass
 
+            # R9000 – active tool number (best-effort; address unverified on this machine)
+            tool_number = 0
+            try:
+                rr_tool = self._client.read_holding_registers(
+                    address=REG_TOOL_NUMBER, count=1, device_id=MODBUS_UNIT
+                )
+                if not rr_tool.isError():
+                    tool_number = rr_tool.registers[0]
+            except Exception:  # noqa: BLE001
+                pass
+
             # FC01 – read coil states (0–40 covers all confirmed coils: spindle 7+8, vacuum 12, stoppers 14–19, dust cover 35+36)
             vacuum_on = forward_pos_on = left_pos_on = dust_cover_on = spindle_on = False
             try:
@@ -571,6 +598,7 @@ class ModbusPoller(threading.Thread):
                 _state.left_pos_on    = left_pos_on
                 _state.dust_cover_on  = dust_cover_on
                 _state.spindle_on     = spindle_on
+                _state.tool_number    = tool_number
 
         except Exception as exc:  # noqa: BLE001
             with _state_lock:
@@ -798,6 +826,78 @@ def api_mcode():
 
     return jsonify({"ok": True, "mcode": mcode_name, "register_value": mcode_value})
 
+
+@app.route("/api/load_program", methods=["POST"])
+def api_load_program():
+    """
+    Upload a .nc / .gcode program file.
+
+    The file is always saved to the local  uploads/  folder.
+    If NC_PROGRAMS_PATH env var is set (e.g. a UNC share to the controller's
+    program directory), the file is also copied there so the controller can
+    load it from its own file manager — WITHOUT starting execution.
+
+    Supported extensions: .nc .cnc .tap .prg .txt .gcode
+    """
+    if "file" not in request.files:
+        abort(400, description="No file part in request")
+
+    f = request.files["file"]
+    if not f.filename:
+        abort(400, description="Empty filename")
+
+    ext = pathlib.Path(f.filename).suffix.lower()
+    if ext not in _NC_EXTENSIONS:
+        abort(400, description=f"Unsupported extension '{ext}'. Allowed: {sorted(_NC_EXTENSIONS)}")
+
+    # Sanitise filename – keep only safe characters
+    safe_name = "".join(c for c in pathlib.Path(f.filename).name if c.isalnum() or c in "._- ")
+    if not safe_name:
+        abort(400, description="Invalid filename")
+
+    local_path = _UPLOAD_DIR / safe_name
+    f.save(str(local_path))
+
+    result = {
+        "ok": True,
+        "filename": safe_name,
+        "local_path": str(local_path),
+        "size_bytes": local_path.stat().st_size,
+        "copied_to_controller": False,
+        "controller_path": None,
+        "note": "",
+    }
+
+    # Try to copy to controller if path is configured
+    if NC_PROGRAMS_PATH:
+        try:
+            dest_dir = pathlib.Path(NC_PROGRAMS_PATH)
+            dest_path = dest_dir / safe_name
+            shutil.copy2(str(local_path), str(dest_path))
+            result["copied_to_controller"] = True
+            result["controller_path"] = str(dest_path)
+        except Exception as exc:  # noqa: BLE001
+            result["note"] = (
+                f"Saved locally but could NOT copy to controller path '{NC_PROGRAMS_PATH}': {exc}. "
+                "Check NC_PROGRAMS_PATH env var and network share access."
+            )
+    else:
+        result["note"] = (
+            "NC_PROGRAMS_PATH not configured. File saved locally only. "
+            r"Set NC_PROGRAMS_PATH=\\192.168.0.113\<share>\<folder> to auto-copy to the controller."
+        )
+
+    return jsonify(result)
+
+
+@app.route("/api/uploads")
+def api_uploads():
+    """List files in the local uploads folder."""
+    files = []
+    for p in sorted(_UPLOAD_DIR.iterdir()):
+        if p.is_file() and p.suffix.lower() in _NC_EXTENSIONS:
+            files.append({"name": p.name, "size_bytes": p.stat().st_size})
+    return jsonify({"files": files, "upload_dir": str(_UPLOAD_DIR)})
 
 
 @app.route("/api/diagnostics")

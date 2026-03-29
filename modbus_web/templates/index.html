@@ -510,36 +510,33 @@
       </div>
     </div>
     <div class="flags">
-      <span class="flag" id="fl-estop">E-Stop</span>
-      <span class="flag" id="fl-alarm">Alarm</span>
-      <span class="flag" id="fl-cycle">Cycle Running</span>
-      <span class="flag" id="fl-hold">Feed Hold</span>
-      <span class="flag" id="fl-home">Homing</span>
-      <span class="flag" id="fl-spindle">Spindle ON</span>
-      <span class="flag" id="fl-pause">Paused</span>
-      <span class="flag" id="fl-door">Door Open</span>
+      <span class="flag" id="fl-estop">🛑 E-Stop</span>
+      <span class="flag" id="fl-alarm">⚠ Alarm</span>
+      <span class="flag" id="fl-cycle">▶ Cycle Running</span>
+      <span class="flag" id="fl-hold">⏸ Feed Hold</span>
+      <span class="flag" id="fl-home">⌂ Homing</span>
+      <span class="flag" id="fl-spindle" title="Spindle – live coils 7+8">🔄 Spindle ON</span>
+      <span class="flag" id="fl-pause">⏸ Paused</span>
+      <span class="flag" id="fl-door">🚪 Door Open</span>
     </div>
-    <!-- Pneumatics & auxiliary live coil states -->
+    <!-- Pneumatics & auxiliary live coil states (FC01 read-back) -->
     <div style="margin-top:.6rem">
-      <div class="subsection-label">Pneumatics &amp; Vacuum</div>
+      <div class="subsection-label">Pneumatics &amp; Vacuum (live coils)</div>
       <div class="flags">
-        <span class="flag" id="fl-vacuum">💧 Vacuum</span>
-        <span class="flag" id="fl-dust-cover">🔲 Dust Cover</span>
-      </div>
-    </div>
-    <div style="margin-top:.6rem">
-      <div class="subsection-label">Stoppers / Locators</div>
-      <div class="flags">
-        <span class="flag" id="fl-forward-pos" title="Forward stopper – coils 14/18">↑ Forward Pos</span>
-        <span class="flag" id="fl-left-pos"    title="Left stopper – coils 15/19">← Left Pos</span>
+        <span class="flag" id="fl-vacuum"      title="Coil 12">💧 Vacuum</span>
+        <span class="flag" id="fl-dust-cover"  title="Coils 35+36">🔲 Dust Cover</span>
+        <span class="flag" id="fl-forward-pos" title="Coils 14+18">↑ Forward Pos</span>
+        <span class="flag" id="fl-left-pos"    title="Coils 15+19">← Left Pos</span>
       </div>
     </div>
     <div style="margin-top:.75rem; font-size:.72rem; color:var(--muted)">
       Program&nbsp;#<span id="val-program">—</span>
       &nbsp;|&nbsp;
-      Alarm&nbsp;code&nbsp;<span id="val-alarm">—</span>
+      Tool&nbsp;#<span id="val-tool">—</span>
       &nbsp;|&nbsp;
-      G-code&nbsp;line&nbsp;<span id="val-gcode-line">—</span>
+      Alarm&nbsp;<span id="val-alarm">—</span>
+      &nbsp;|&nbsp;
+      G-line&nbsp;<span id="val-gcode-line">—</span>
     </div>
   </div>
 
@@ -585,21 +582,21 @@
     <h2>Spindle &amp; Feed</h2>
     <div class="gauge-row">
       <div class="gauge-label-row">
-        <span>Spindle Speed</span>
-        <span class="gauge-value"><span id="val-spindle">0</span> RPM</span>
+        <span>Spindle Speed <span style="font-size:.65rem;color:var(--muted)">(R1007 – confirmed live)</span></span>
+        <span class="gauge-value"><span id="val-spindle">0</span> <span style="font-size:.75rem">RPM</span></span>
       </div>
-      <div class="gauge-bar"><div class="gauge-fill" id="bar-spindle" style="width:0%;background:var(--accent)"></div></div>
+      <div class="gauge-bar"><div class="gauge-fill" id="bar-spindle" style="width:0%;background:var(--orange)"></div></div>
 
       <div class="gauge-label-row" style="margin-top:.5rem">
         <span>Feed Rate</span>
-        <span class="gauge-value"><span id="val-feed">0</span> mm/min</span>
+        <span class="gauge-value"><span id="val-feed">0</span> <span style="font-size:.75rem">mm/min</span></span>
       </div>
       <div class="gauge-bar"><div class="gauge-fill" id="bar-feed" style="width:0%;background:var(--green)"></div></div>
 
       <!-- Instantaneous axis velocity (live from R1004; confirmed via debug session) -->
       <div class="gauge-label-row" style="margin-top:.5rem">
-        <span>Axis Velocity (R1004)</span>
-        <span class="gauge-value"><span id="val-velocity">0</span> mm/min</span>
+        <span>Axis Velocity <span style="font-size:.65rem;color:var(--muted)">(R1004)</span></span>
+        <span class="gauge-value"><span id="val-velocity">0</span> <span style="font-size:.75rem">mm/min</span></span>
       </div>
       <div class="gauge-bar"><div class="gauge-fill" id="bar-velocity" style="width:0%;background:var(--yellow)"></div></div>
     </div>
@@ -676,116 +673,141 @@
   <div class="card" style="grid-column: span 2">
     <h2>Controls</h2>
 
-    <!-- CNC cycle -->
+    <!-- CNC cycle controls -->
     <div class="subsection-label">Cycle</div>
-    <div class="controls-grid" style="margin-bottom:.75rem">
+    <div class="controls-grid" style="margin-bottom:.85rem">
       <button class="btn green"  onclick="sendCommand('cycle_start')">▶ Cycle Start</button>
       <button class="btn yellow" onclick="sendCommand('feed_hold')">⏸ Feed Hold</button>
       <button class="btn"        onclick="sendCommand('reset')">↺ Reset / Clear Alarm</button>
       <button class="btn red"    onclick="confirmEstop()">🛑 Software E-Stop</button>
     </div>
 
-    <!-- Spindle -->
-    <div class="subsection-label">Spindle</div>
-    <div class="controls-grid" style="margin-bottom:.75rem">
-      <button class="btn"  onclick="sendCommand('spindle_cw')">↻ Spindle CW</button>
-      <button class="btn"  onclick="sendCommand('spindle_ccw')">↺ Spindle CCW</button>
+    <!-- MDI M-code controls (confirmed working via R21001 + R20000 bit 10) -->
+    <div class="subsection-label">M-Code via MDI
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"> — R21001 + Cycle Start pulse</span>
+    </div>
+    <div class="controls-grid" style="margin-bottom:.85rem">
+      <button class="btn green"  onclick="sendMcode('vacuum_on')">💧 M10 – Vacuum ON</button>
+      <button class="btn red"    onclick="sendMcode('vacuum_off')">💧 M11 – Vacuum OFF</button>
+      <button class="btn green"  onclick="sendMcode('spindle_on')">🔄 M3 – Spindle ON</button>
+      <button class="btn red"    onclick="sendMcode('spindle_off')">🔄 M5 – Spindle OFF</button>
+      <button class="btn orange full" onclick="sendMcode('cleaning')">🧹 M17 – Cleaning Cycle (2 min)</button>
     </div>
 
-    <!-- Vacuum & dust cover (coil-based – instant) -->
-    <div class="subsection-label">Vacuum &amp; Dust Cover (coil direct)</div>
-    <div class="controls-grid" style="margin-bottom:.75rem">
-      <button class="btn"  onclick="sendCommand('vacuum', true)">💧 Vacuum ON</button>
-      <button class="btn"  onclick="sendCommand('vacuum', false)">💧 Vacuum OFF</button>
-      <button class="btn"  onclick="sendCommand('dust_cover', true)">🔲 Dust Cover OPEN</button>
-      <button class="btn"  onclick="sendCommand('dust_cover', false)">🔲 Dust Cover CLOSE</button>
+    <!-- Stoppers – status is read-only via FC01; PLC controls the outputs -->
+    <div class="subsection-label">Stoppers / Locators
+      <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)"> — PLC-controlled, status read-only (coils 14+18 / 15+19)</span>
     </div>
-
-    <!-- Stoppers / Locators (coil-based – confirmed Coils 14+18 / 15+19) -->
-    <div class="subsection-label">Stoppers / Locators (Coils 14+18 / 15+19)</div>
-    <div class="controls-grid" style="margin-bottom:.75rem">
+    <div class="controls-grid">
       <button class="btn" onclick="sendCommand('forward_pos_on', true)">↑ Forward Pos ON</button>
       <button class="btn" onclick="sendCommand('forward_pos_on', false)">↑ Forward Pos OFF</button>
       <button class="btn" onclick="sendCommand('left_pos_on', true)">← Left Pos ON</button>
       <button class="btn" onclick="sendCommand('left_pos_on', false)">← Left Pos OFF</button>
     </div>
+  </div>
 
-    <!-- M-code commands (MDI execution via R21001 + R20000; confirmed M10/M11) -->
-    <div class="subsection-label">M-Code Commands (MDI – require M-code in MDI buffer)</div>
-    <div class="controls-grid">
-      <button class="btn" onclick="sendMcode('vacuum_on')">M10 Vacuum ON</button>
-      <button class="btn" onclick="sendMcode('vacuum_off')">M11 Vacuum OFF</button>
-      <button class="btn" onclick="sendMcode('spindle_on')">M3 Spindle ON</button>
-      <button class="btn" onclick="sendMcode('spindle_off')">M5 Spindle OFF</button>
-      <button class="btn full orange" onclick="sendMcode('cleaning')">M17 Cleaning Cycle (2 min)</button>
+  <!-- NC Program Upload -->
+  <div class="card" style="grid-column: span 2">
+    <h2>📂 Зареждане на NC програма</h2>
+    <p style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">
+      Качи <code>.nc / .gcode / .tap / .cnc</code> файл. Файлът се записва локално и (ако е конфигуриран
+      <code>NC_PROGRAMS_PATH</code>) се копира директно в папката с програми на контролера.
+      <strong style="color:var(--yellow)">Програмата не стартира автоматично</strong> — трябва ръчно зареждане от HMI.
+    </p>
+    <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+      <input id="inp-nc-file" type="file" accept=".nc,.cnc,.tap,.prg,.txt,.gcode"
+             style="flex:1;background:#0f1117;border:1px solid var(--border);border-radius:6px;
+                    color:var(--text);padding:.4rem .6rem;font-size:.8rem;min-width:0" />
+      <button class="btn green" style="white-space:nowrap" onclick="uploadNCFile()">⬆ Upload</button>
+    </div>
+    <div id="upload-result" style="display:none;margin-top:.6rem;padding:.5rem .75rem;border-radius:6px;
+         font-size:.75rem;font-family:monospace;word-break:break-all"></div>
+
+    <!-- Previously uploaded files -->
+    <div style="margin-top:.85rem">
+      <div class="subsection-label">Качени файлове
+        <button onclick="refreshUploads()" style="background:none;border:none;color:var(--accent);
+                cursor:pointer;font-size:.75rem;margin-left:.5rem">↻ Обнови</button>
+      </div>
+      <div id="upload-list" style="font-size:.75rem;color:var(--muted);margin-top:.35rem">—</div>
+    </div>
+
+    <div class="notice-bar" style="margin-top:.75rem">
+      ⚙ За автоматично копиране към контролера задай env: <code>NC_PROGRAMS_PATH=\\192.168.0.113\&lt;share&gt;\Program</code><br>
+      Трябва да намерим SMB share-а на контролера (провери с: <code>net view \\192.168.0.113</code> от командния ред).
     </div>
   </div>
 
   <!-- Diagnostics -->
   <div class="card" style="grid-column: span 2">
-    <h2>Diagnostics &amp; Register Map</h2>
+    <h2>Diagnostics – Live Register Scan</h2>
     <p style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem">
-      Use the scan to read raw Modbus values and verify endpoint mapping.
-      Authentication: <strong style="color:var(--text)">none</strong> – Modbus TCP has no built-in auth.
-      Enable Modbus TCP on the controller: <code>parameter 45010 = 1</code>.
+      Сканира реалните Modbus стойности директно от контролера. Полезно за проверка на нови регистри.
     </p>
     <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
       <button class="btn" style="width:auto;padding:.4rem 1rem" onclick="runScan()">🔍 Scan Registers</button>
-      <label style="font-size:.72rem;color:var(--muted)">Unit ID override:
+      <label style="font-size:.72rem;color:var(--muted)">Unit ID:
         <input id="inp-scan-unit" type="number" min="0" max="255" placeholder="default"
                style="width:5rem;background:#0f1117;border:1px solid var(--border);border-radius:6px;color:var(--text);padding:.25rem .4rem;font-size:.8rem;margin-left:.3rem" />
       </label>
     </div>
-    <div id="scan-output">
+    <div id="scan-output" style="display:none;margin-top:.75rem;max-height:260px;overflow-y:auto">
       <table class="diag-table" id="scan-table">
         <thead><tr><th>Type</th><th>Address</th><th>Description</th><th>Raw Value</th><th>Hex</th></tr></thead>
         <tbody></tbody>
       </table>
       <div id="scan-errors"></div>
     </div>
-    <table class="diag-table" style="margin-top:.75rem">
-      <thead><tr><th>Reg (0-based)</th><th>Description</th></tr></thead>
+
+    <!-- Confirmed register map (live-verified on this machine) -->
+    <div class="subsection-label" style="margin-top:1rem">Потвърдени регистри (live debug)</div>
+    <table class="diag-table">
+      <thead><tr><th style="width:9rem">Адрес</th><th>Описание</th><th style="width:6rem">Статус</th></tr></thead>
       <tbody>
-        <tr><td>0</td><td>Machine status word (bit flags) – also check addresses 32–45 if zeros (RegisterMode=-32)</td></tr>
-        <tr><td>1–2</td><td>X position – signed 32-bit lo/hi words (×0.001 mm) – also decoded as float32 in /api/scan</td></tr>
-        <tr><td>3–4</td><td>Y position</td></tr>
-        <tr><td>5–6</td><td>Z position</td></tr>
-        <tr><td>7</td><td>Spindle speed (RPM)</td></tr>
-        <tr><td>8</td><td>Feed rate (mm/min)</td></tr>
-        <tr><td>9</td><td>Active alarm code</td></tr>
-        <tr><td>10</td><td>Program number</td></tr>
-        <tr><td>11</td><td>Lot count (parts produced)</td></tr>
-        <tr><td>12</td><td>Lot target</td></tr>
-        <tr><td>13</td><td>Lot ID</td></tr>
-        <tr><td>5000</td><td>Connection status (OpenPortResultAddr)</td></tr>
-        <tr><td>5001</td><td>Connection idle time – seconds (IdleTimeAddr)</td></tr>
-        <tr><td>5002</td><td>Total Modbus packets processed (CounterAddr)</td></tr>
-        <tr><td>5003</td><td>Last error data (ErrDataAddr)</td></tr>
-        <tr><td>5004</td><td>Last error register address (ErrAddrAddr)</td></tr>
-        <tr><td>5005</td><td>Packets sent by server (PkgThisAddr)</td></tr>
-        <tr><td>5006</td><td>Packets received from client (PkgOtherAddr)</td></tr>
-        <tr><td>5007</td><td>Packets responded (PkgRspAddr)</td></tr>
-        <tr><td>5008</td><td>Exception (error) packets (PkgExcptionAddr)</td></tr>
-        <tr><td>20104+20105</td><td>Stopper command R20104 – HMI→PLC (lo/hi words, 32-bit). Bit 17=FORWARD POS, 18=LEFT POS</td></tr>
-        <tr><td>20204+20205</td><td>Stopper status R20204 – PLC→HMI (lo/hi words, 32-bit). Same bit map</td></tr>
-        <tr><td>8102</td><td>G-code current line number (R8102, system-status range R8000–R8999; unverified – confirm with Scan)</td></tr>
-        <tr><td>10000+10001</td><td>Absolute X – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10001–10002</td></tr>
-        <tr><td>10002+10003</td><td>Absolute Y – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10003–10004</td></tr>
-        <tr><td>10004+10005</td><td>Absolute Z – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10005–10006</td></tr>
-        <tr><td>32–45</td><td>Possible alternate location for main data (RegisterMode=-32 in Eth_ModbusServerTCP.ini may shift user registers by +32)</td></tr>
-        <tr><td>1004</td><td>⚡ Instantaneous axis velocity (mm/min) – CONFIRMED LIVE during JOG; goes to 0 when stopped</td></tr>
-        <tr><td>6100</td><td>⚡ CNC status/lamp word (R6100) – CONFIRMED LIVE; mode indicator bits including feed-% LEDs</td></tr>
-        <tr><td>6201</td><td>⚡ CNC mode word (R6201) – CONFIRMED LIVE; bit 1=MEM, 2=MDI, 3=ZRN, 4=MPG, 5=JOG, 6=INCJOG, 7=RP1, 8=RP2</td></tr>
-        <tr><td>8067</td><td>Feed rate override (×10; 1000=100%) – confirmed present at R8067</td></tr>
-        <tr><td>8068</td><td>Rapid traverse override (×10; 1000=100%) – confirmed present at R8068</td></tr>
-        <tr><td>8069</td><td>Spindle speed override (×10; 1000=100%) – confirmed present at R8069</td></tr>
-        <tr><td>FC2: 0–15</td><td>Discrete inputs (FC2/read_discrete_inputs) – physical sensor / limit-switch states; check /api/scan discrete_input rows</td></tr>
+        <tr><td>R1004</td><td>Моментална скорост на оста (mm/min) – 0 когато оста е спряна</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R1007</td><td>Скорост на шпиндела (RPM) – 18000 по време на работа</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R6100</td><td>CNC статус/lamp word – режимни индикатори</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R6201</td><td>CNC режим (bit0=MEM, bit1=MDI, bit2=ZRN, bit3=MPG, bit4=JOG, bit5=INCJOG)</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R8067</td><td>Feed override (×10; 1000=100%) – записваем</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R8068</td><td>Rapid override (×10; 1000=100%) – записваем</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R8069</td><td>Spindle override (×10; 1000=100%) – записваем</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R20000</td><td>CNC команден регистър – bit10=Cycle Start (MDI), bit1=Reset, bit11=Start Mem ⚠</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R21001</td><td>M-code execution – стойност = M_номер × 1800 (напр. M10→18000)</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R22000</td><td>MDI режим – пиши 1 за MDI, 4 за JOG – записваем</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R5000–5008</td><td>Modbus диагностика – connection status, idle time, packet counters</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>R9000</td><td>Номер на активен инструмент (best-effort, адресът не е потвърден)</td><td style="color:var(--yellow)">⚠ непотвърден</td></tr>
       </tbody>
     </table>
-    <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">
-      Coils (0-based): 0=Cycle Start, 1=Feed Hold, 2=Reset, 3=Spindle CW, 4=Spindle CCW, 5=Vacuum Pump 1, 6=E-Stop, 7=Lot Reset, 10=Aspiration (confirmed via live debug)<br>
-      Stoppers via <code>/api/stopper</code>: <code>{"stopper":"forward_pos","value":true}</code> or <code>{"stopper":"left_pos","value":false}</code>
-    </p>
+
+    <!-- Confirmed coil map -->
+    <div class="subsection-label" style="margin-top:1rem">Потвърдени coils (FC01 – read-back)</div>
+    <table class="diag-table">
+      <thead><tr><th style="width:5rem">Coil</th><th>Функция</th><th style="width:6rem">Статус</th></tr></thead>
+      <tbody>
+        <tr><td>7</td><td>Шпиндел работи (индикатор A) – read-only, PLC</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>8</td><td>Шпиндел работи (индикатор B) – read-only, PLC</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>12</td><td>Вакуум помпа – read-only (PLC Y-изход)</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>14 + 18</td><td>Forward Pos соленоид (A+B) – read-only, PLC</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>15 + 19</td><td>Left Pos соленоид (A+B) – read-only, PLC</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>35 + 36</td><td>Dust Cover (прах капак) – и двата ON = отворен, read-only, PLC</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>0–255</td><td>⚠ PLC Y-изходи – FC05 write се приема но PLC веднага ги презаписва (~1ms)</td><td style="color:var(--red)">⛔ не се записват</td></tr>
+      </tbody>
+    </table>
+
+    <!-- Confirmed M-code map -->
+    <div class="subsection-label" style="margin-top:1rem">M-code карта (BEIZA V3.pp + live capture)</div>
+    <table class="diag-table">
+      <thead><tr><th style="width:4rem">M-код</th><th>R21001 стойност</th><th>Функция</th><th style="width:6rem">Статус</th></tr></thead>
+      <tbody>
+        <tr><td>M3</td><td>5400</td><td>Шпиндел ON (CW)</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>M5</td><td>9000</td><td>Шпиндел OFF</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>M10</td><td>18000</td><td>Вакуум помпа 1 ON</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>M11</td><td>19800</td><td>Вакуум помпа 1 OFF</td><td style="color:var(--green)">✅ потвърден</td></tr>
+        <tr><td>M17</td><td>30600</td><td>Почистващ цикъл (2 мин)</td><td style="color:var(--green)">✅ от PP файл</td></tr>
+        <tr><td>M140</td><td>?</td><td>Dust Cover UP – формулата 140×1800=252000 надхвърля 16-bit, нужен live capture</td><td style="color:var(--yellow)">⚠ непотвърден</td></tr>
+        <tr><td>M141</td><td>?</td><td>Dust Cover DOWN – същото</td><td style="color:var(--yellow)">⚠ непотвърден</td></tr>
+      </tbody>
+    </table>
   </div>
 
 </main>
@@ -853,16 +875,16 @@
       }
 
       // Status flags
-      setFlag('fl-estop',   d.estop_active,    'red');
-      setFlag('fl-alarm',   d.alarm_active,    'red');
-      setFlag('fl-cycle',   d.cycle_running,   'green');
-      setFlag('fl-hold',    d.feed_hold_active,'yellow');
-      setFlag('fl-home',    d.homing,          'orange');
-      setFlag('fl-spindle', d.spindle_running, 'green');
-      setFlag('fl-pause',   d.program_paused,  'yellow');
-      setFlag('fl-door',    d.door_open,       'orange');
+      setFlag('fl-estop',   d.estop_active,          'red');
+      setFlag('fl-alarm',   d.alarm_active,          'red');
+      setFlag('fl-cycle',   d.cycle_running,         'green');
+      setFlag('fl-hold',    d.feed_hold_active,      'yellow');
+      setFlag('fl-home',    d.homing,                'orange');
+      setFlag('fl-spindle', d.spindle_on || d.spindle_running, 'green');
+      setFlag('fl-pause',   d.program_paused,        'yellow');
+      setFlag('fl-door',    d.door_open,             'orange');
 
-      // Vacuum & pneumatics live coil read-back (confirmed coil addresses)
+      // Live coil read-back (FC01)
       setFlag('fl-vacuum',      d.vacuum_on,      'green');
       setFlag('fl-dust-cover',  d.dust_cover_on,  'green');
       setFlag('fl-forward-pos', d.forward_pos_on, 'green');
@@ -913,10 +935,11 @@
       setOvr('val-ovr-rapid',   'bar-ovr-rapid',   d.rapid_override_pct);
       setOvr('val-ovr-spindle', 'bar-ovr-spindle', d.spindle_override_pct);
 
-      // Program / alarm code / G-code line
-      document.getElementById('val-program').textContent  = d.program_number || '—';
-      document.getElementById('val-alarm').textContent    = d.alarm_code     || '—';
-      document.getElementById('val-gcode-line').textContent = d.gcode_line   || '—';
+      // Program / alarm code / G-code line / tool number
+      document.getElementById('val-program').textContent    = d.program_number || '—';
+      document.getElementById('val-tool').textContent       = d.tool_number > 0 ? d.tool_number : '—';
+      document.getElementById('val-alarm').textContent      = d.alarm_code     || '—';
+      document.getElementById('val-gcode-line').textContent = d.gcode_line     || '—';
 
       // Lot
       document.getElementById('val-lot-count').textContent  = d.lot_count;
@@ -984,6 +1007,24 @@
       const data = await res.json();
       if (res.ok) {
         showToast(`✓ ${cmd} sent`, true);
+      } else {
+        showToast(`✗ ${data.description || res.statusText}`, false);
+      }
+    } catch (e) {
+      showToast('✗ Network error', false);
+    }
+  }
+
+  async function sendMcode(mcode) {
+    try {
+      const res = await fetch('/api/mcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mcode })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`✓ ${mcode} executed (R21001=${data.register_value})`, true);
       } else {
         showToast(`✗ ${data.description || res.statusText}`, false);
       }
@@ -1072,9 +1113,55 @@
     }
   }
 
+  async function uploadNCFile() {
+    const inp = document.getElementById('inp-nc-file');
+    const res_div = document.getElementById('upload-result');
+    if (!inp.files.length) { showToast('Избери файл', false); return; }
+    const fd = new FormData();
+    fd.append('file', inp.files[0]);
+    res_div.style.display = 'block';
+    res_div.style.background = '#1e293b';
+    res_div.style.border = '1px solid var(--border)';
+    res_div.textContent = 'Качване…';
+    try {
+      const r = await fetch('/api/load_program', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (r.ok) {
+        const icon = d.copied_to_controller ? '✅' : '📁';
+        res_div.style.background = '#14532d44';
+        res_div.style.border = '1px solid var(--green)';
+        res_div.style.color = 'var(--green)';
+        res_div.innerHTML = `${icon} <b>${d.filename}</b> (${d.size_bytes} B) записан локално.<br>` +
+          (d.copied_to_controller ? `Копиран → <b>${d.controller_path}</b>` : `⚠ ${d.note}`);
+        inp.value = '';
+        refreshUploads();
+      } else {
+        res_div.style.background = '#7f1d1d44';
+        res_div.style.border = '1px solid var(--red)';
+        res_div.style.color = 'var(--red)';
+        res_div.textContent = '✗ ' + (d.description || r.statusText);
+      }
+    } catch(e) {
+      res_div.textContent = '✗ Network error: ' + e.message;
+    }
+  }
+
+  async function refreshUploads() {
+    try {
+      const r = await fetch('/api/uploads');
+      const d = await r.json();
+      const el = document.getElementById('upload-list');
+      if (!d.files.length) { el.textContent = 'Няма качени файлове.'; return; }
+      el.innerHTML = d.files.map(f =>
+        `<span style="color:var(--accent)">${f.name}</span> <span style="color:var(--muted)">(${f.size_bytes} B)</span>`
+      ).join('<br>');
+    } catch(e) {}
+  }
+
   // Poll every 500 ms
   fetchStatus();
   setInterval(fetchStatus, 500);
+  refreshUploads();
 </script>
 </body>
 </html>
