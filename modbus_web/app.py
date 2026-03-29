@@ -83,7 +83,7 @@ from pymodbus.exceptions import ModbusException
 # ---------------------------------------------------------------------------
 # Configuration (override with environment variables)
 # ---------------------------------------------------------------------------
-MODBUS_HOST = os.environ.get("MODBUS_HOST", "192.168.1.100")
+MODBUS_HOST = os.environ.get("MODBUS_HOST", "192.168.0.113")
 MODBUS_PORT = int(os.environ.get("MODBUS_PORT", "502"))
 MODBUS_UNIT = int(os.environ.get("MODBUS_UNIT", "1"))
 POLL_INTERVAL = float(os.environ.get("POLL_INTERVAL", "0.5"))   # seconds
