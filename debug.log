@@ -63,3 +63,130 @@ This is the key. The LNC controller uses `RegisterMode=-32`, which likely means 
   March 29th perfectly. Let me verify this against the UTC timestamp to confirm the timezone offset. I'm seeing a clear pattern emerge with the status and control registers. The R8000 and R8050 registers
   contain status bits that indicate the machine is actively running, R8052 shows the spindle speed at 10,000 RPM, and those override registers are using a standard CNC encoding where 1000 represents
   100.0%. Most intriguingly, R8110-R8117 are mirroring the values from R1020-R1027, suggesting these might be shadow registers or a confirmation mechanism.
+
+
+Interesting! Found non-zero registers in the wider scan:
+  - 305: 16384 (R305)
+  - 20005: 1 (R20005)
+  - 20200: 1010 (R20200)
+  - 20203: 1 (R20203)
+
+  R20200 = 1010 is interesting - it's a non-trivial value. And R20203 = 1.
+  R20005 = 1 is interesting too.
+
+  - `ohButtonReset`: R20000, bit 1 (Reset)
+  - `ohButtonStart`: R20000, bit 11 (Start machining)
+  - `ohButtonPause`: R20000, bit 12 (Program pause)
+  - Two others: R20001 bit 4 and R20001 bit 1
+  - Unknown buttons: R20000 bit 9 and R20000 bit 5
+
+  The R20000 register is the main command register! Bit 10 = Cycle Start (from previous research), bit 1 = Reset, bit 11 = Start, bit 12 = Pause.
+◐ Key findings:
+  - R22000 = 4 (JOG mode, confirmed)
+  - R20005 = 1 (this seems like an always-on flag)
+  - R21002 = 65535 = 0xFFFF = -1 as signed (the MDI M-code register, set to -1/idle)
+  - R6201 = 16 = 0x10 = bit 4 set (which might mean JOG in a different encoding)
+
+  Now from the HMI XML, `W_REG(21002, -1)` clears the M-code signal. So R21002 is used for MDI restart M-code.For MDI M-code execution, the typical LNC pattern is:1.
+  To switch to MDI mode, I need to figure out what register the HMI mode buttons are actually writing to—they use SET_PROPERTY with OutputNo="#3" which is a macro parameter, not a direct register. Looking
+  at the mode button macros in the XML, I need to trace what register #3 maps to in the mode-switching logic, since R22000 currently shows JOG mode at value 4 and I need to understand how to transition to
+  MDI.
+
+  The PLC project has "M Code Read" and "M Code Finish" rungs, which suggests the controller reads M-code values from CNC execution rather than from user-writable registers, so I should look for a
+  dedicated MDI M-code execution register like R20010 instead of trying to write directly to the MDI buffer.
+
+  Since the vacuum and stopper buttons are hardware-wired to PLC inputs and can't be controlled via Modbus, my best option is to execute M-codes through MDI mode—but this requires finding the correct text
+  buffer register and understanding the formatting. Let me check if switching to MDI mode via R22000 is possible, which would unlock the standard MDI M-code execution path.
+
+   - R21002 = 65535 (-1 = idle) → M-code изпълнение регистър (HMI→PLC M-код командата)
+   - R22000 = 4 (JOG режим) → чрез него се сменя режима
+   - R20000/20001/20002 = 0 → командни битове (Reset=bit1, Start=bit11, Pause=bit12)
+
+  Коил 296 е M-coil статус (PLC го движи), не входен команден coil. Не можем да го пишем.
+
+  Имаме два пътя напред:
+
+  Път А — R20000 командни битове (можем да правим Reset, Cycle Start, Pause):
+
+   - Потвърдено от HMI XML: OutputNo=20000, OutputRBit=1 = Reset, OutputRBit=11 = Start
+
+  Път Б — MDI M-code изпълнение чрез R21002:
+
+   - Пишем M-код число (напр. 10 = M10 = вакуум ON)
+   - Пулс в R20000 bit 10/11 = изпълни
+   - Изисква превключване в MDI режим
+
+
+  1. `R21001: (22000, 18000)` - R21001 changed from 22000 to 18000 during M10 execution! This is likely the "current M-code being executed" register. 18000 might represent M10 * 1800 or it could be a
+  different encoding.
+
+  Actually wait - 18000 might be the M-code number in a different format. Or maybe it's the program number. Let me think... 18000 = 0x4650... hmm. Or 18000 / 10 = 1800... that's not M10.
+
+  So the shift from 22000 to 18000 is interesting - the initial value might have been pointing to a mode word or control address, and when M10 executed it switched to 18000. I'm not immediately sure if
+  that's a register address or an encoded value representing something about the M-code execution.
+
+  2. Coils that turned ON during M10: `3, 6, 12,
+
+  ` then `201, 296` and then `49, 202, 207` then `0, 5, 200`
+     - Coil 12 = Vacuum Y-output (expected - M10 = vacuum ON)
+     - Coil 296 = Vacuum M-coil status (expected)
+     - Coil 3, 6 = unknown (momentary during M-code execution - these are likely Cycle Running and M-code active signals)
+     - Coil 201, 202, 207 = new! momentary M-code processing coils
+     - Coil 0, 49, 200 = momentary
+
+  The key sequence is:
+  1. R21001 changes (command dispatch)
+  2. Coils 3,6,12,201,296 turn ON (M-code executing + vacuum ON)
+  3. Coils 49, 202, 207, 0, 5, 200 follow in sequence with 3, 6, 201 turning OFF, then 202, 207 turning OFF, then 0, 49, 200 turning OFF
+
+puzzling over that R21001 register change from 22000 to 18000 — it could be encoding the current M-code value, or perhaps it's tracking something else entirely. Let me work through the math:
+  18000 in hex converts to 0x4650, and in decimal it could represent 180 × 100 or relate to 1800 in some way.
+
+◐ Great results! Now I can see:
+  - Coil 5 = ON (Vacuum Pump confirmed)
+  - Coil 10 = ON (Aspiration confirmed)
+  - Coil 14 = ON (unknown - new!)
+  - Coil 15 = ON (unknown - new!)
+  - Coil 18 = ON (unknown - new!)
+  - Coil 19 = ON (unknown - new!)
+  - DI 7 = ON (new - wasn't seen before!)
+  - DI 29 = ON (confirmed from before)
+  - DI 31 = ON (confirmed from before)
+    The M-code list is confirmed:
+  - M3 = Spindle ON (CW)
+  - M5 = Spindle OFF
+  - M10 = Vacuum ON
+  - M11 = Vacuum OFF
+  - M17 = Cleaning function
+  - M30 = Program end
+
+ 1. Spindle card - show actual RPM large with live indicator (coils 7+8), spindle ON/OFF via M-code buttons
+  2. Machine status - fix `fl-spindle` to use `d.spindle_on` (from coils 7+8) instead of `d.spindle_running` (which
+  is from the status word and not reliable)
+  3. Vacuum - fix buttons: Vacuum ON/OFF via `/api/mcode` (M10/M11), not `/api/command`
+
+
+  4. Tool number - I don't have a confirmed tool register in the data yet, so I'll display it as a field that shows
+  "—" when there's no value
+  5. Controls card - I need to redesign this with M-code based spindle and vacuum controls: big ON/OFF buttons for
+  spindle (M3/M5) and vacuum (M10/M11), plus RPM display, removing the unreliable coil-based buttons but keeping the
+   stopper buttons since they're at least documented
+  6. Remove the duplicate stopper section that's currently in the controls card
+
+  For the implementation, I'm fixing the spindle flag to use the actual coil state instead of an unconfirmed status
+  bit, then wiring up the spindle and vacuum buttons to send M-codes through the API, and adding the necessary
+  JavaScript function to handle those requests.
+
+  I should also add a spindle indicator showing the coil status to the Spindle & Feed card and display the RPM more
+  prominently. For the tool number, I don't have a confirmed register for it, so I'll skip that. Looking at what
+  app.py returns, it's pulling spindle RPM from the register map, so that's what I'll display. I need to verify
+  whether R1007 is actually being polled, because the dashboard is currently pulling spindle speed from register 7
+  in the first block, which might not be the correct value. Let me trace through the poller code to see what
+  register ranges are being read. I need to trace through the poller code to see exactly what registers are being
+  read and confirm whether R1007 is included or if we're only getting register 7 for spindle speed. Looking at the
+  register reads around line 420 onwards, I should be able to identify the gap and determine what's missing from the
+   current spindle RPM display. For the dashboard, I'll need to update the spindle indicator to pull from the coil
+  data instead of the register field. Writing the complete HTML redesign... So I need to pull spindle RPM from R1007
+   which was confirmed during debugging, and I should verify that the poller is actually reading this register in
+  the app.py file. I'll add the tool number field as "—" for now since we haven't identified the register yet, and
+  make sure the spindle speed display is pulling from the right data source.

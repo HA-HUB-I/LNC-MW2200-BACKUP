@@ -519,19 +519,19 @@
       <span class="flag" id="fl-pause">Paused</span>
       <span class="flag" id="fl-door">Door Open</span>
     </div>
-    <!-- Pneumatics / auxiliary live coil states -->
+    <!-- Pneumatics & auxiliary live coil states -->
     <div style="margin-top:.6rem">
       <div class="subsection-label">Pneumatics &amp; Vacuum</div>
       <div class="flags">
-        <span class="flag" id="fl-vacuum">Vacuum Pump</span>
-        <span class="flag" id="fl-aspiration">Aspiration</span>
+        <span class="flag" id="fl-vacuum">💧 Vacuum</span>
+        <span class="flag" id="fl-dust-cover">🔲 Dust Cover</span>
       </div>
     </div>
     <div style="margin-top:.6rem">
       <div class="subsection-label">Stoppers / Locators</div>
       <div class="flags">
-        <span class="flag" id="fl-forward-pos" title="FORWARD POS – front stopper">↑ Front Stopper</span>
-        <span class="flag" id="fl-left-pos"    title="LEFT POS – left stopper">← Left Stopper</span>
+        <span class="flag" id="fl-forward-pos" title="Forward stopper – coils 14/18">↑ Forward Pos</span>
+        <span class="flag" id="fl-left-pos"    title="Left stopper – coils 15/19">← Left Pos</span>
       </div>
     </div>
     <div style="margin-top:.75rem; font-size:.72rem; color:var(--muted)">
@@ -675,24 +675,49 @@
   <!-- Controls -->
   <div class="card" style="grid-column: span 2">
     <h2>Controls</h2>
-    <div class="controls-grid">
+
+    <!-- CNC cycle -->
+    <div class="subsection-label">Cycle</div>
+    <div class="controls-grid" style="margin-bottom:.75rem">
       <button class="btn green"  onclick="sendCommand('cycle_start')">▶ Cycle Start</button>
       <button class="btn yellow" onclick="sendCommand('feed_hold')">⏸ Feed Hold</button>
-      <button class="btn"        onclick="sendCommand('spindle_cw')">↻ Spindle CW</button>
-      <button class="btn"        onclick="sendCommand('spindle_ccw')">↺ Spindle CCW</button>
-      <button class="btn"        onclick="sendCommand('vacuum_pump')">💧 Vacuum Pump 1</button>
-      <button class="btn"        onclick="sendCommand('aspiration')">🌀 Aspiration ON</button>
       <button class="btn"        onclick="sendCommand('reset')">↺ Reset / Clear Alarm</button>
-      <button class="btn red full" onclick="confirmEstop()">🛑 SOFTWARE E-STOP</button>
+      <button class="btn red"    onclick="confirmEstop()">🛑 Software E-Stop</button>
     </div>
-    <div style="margin-top:.9rem">
-      <div class="subsection-label">Stoppers / Locators (R20104 write)</div>
-      <div class="controls-grid">
-        <button class="btn" onclick="sendStopper('forward_pos', true)">↑ Front Stopper ON</button>
-        <button class="btn" onclick="sendStopper('forward_pos', false)">↑ Front Stopper OFF</button>
-        <button class="btn" onclick="sendStopper('left_pos', true)">← Left Stopper ON</button>
-        <button class="btn" onclick="sendStopper('left_pos', false)">← Left Stopper OFF</button>
-      </div>
+
+    <!-- Spindle -->
+    <div class="subsection-label">Spindle</div>
+    <div class="controls-grid" style="margin-bottom:.75rem">
+      <button class="btn"  onclick="sendCommand('spindle_cw')">↻ Spindle CW</button>
+      <button class="btn"  onclick="sendCommand('spindle_ccw')">↺ Spindle CCW</button>
+    </div>
+
+    <!-- Vacuum & dust cover (coil-based – instant) -->
+    <div class="subsection-label">Vacuum &amp; Dust Cover (coil direct)</div>
+    <div class="controls-grid" style="margin-bottom:.75rem">
+      <button class="btn"  onclick="sendCommand('vacuum', true)">💧 Vacuum ON</button>
+      <button class="btn"  onclick="sendCommand('vacuum', false)">💧 Vacuum OFF</button>
+      <button class="btn"  onclick="sendCommand('dust_cover', true)">🔲 Dust Cover OPEN</button>
+      <button class="btn"  onclick="sendCommand('dust_cover', false)">🔲 Dust Cover CLOSE</button>
+    </div>
+
+    <!-- Stoppers / Locators (coil-based – confirmed Coils 14+18 / 15+19) -->
+    <div class="subsection-label">Stoppers / Locators (Coils 14+18 / 15+19)</div>
+    <div class="controls-grid" style="margin-bottom:.75rem">
+      <button class="btn" onclick="sendCommand('forward_pos_on', true)">↑ Forward Pos ON</button>
+      <button class="btn" onclick="sendCommand('forward_pos_on', false)">↑ Forward Pos OFF</button>
+      <button class="btn" onclick="sendCommand('left_pos_on', true)">← Left Pos ON</button>
+      <button class="btn" onclick="sendCommand('left_pos_on', false)">← Left Pos OFF</button>
+    </div>
+
+    <!-- M-code commands (MDI execution via R21001 + R20000; confirmed M10/M11) -->
+    <div class="subsection-label">M-Code Commands (MDI – require M-code in MDI buffer)</div>
+    <div class="controls-grid">
+      <button class="btn" onclick="sendMcode('vacuum_on')">M10 Vacuum ON</button>
+      <button class="btn" onclick="sendMcode('vacuum_off')">M11 Vacuum OFF</button>
+      <button class="btn" onclick="sendMcode('spindle_on')">M3 Spindle ON</button>
+      <button class="btn" onclick="sendMcode('spindle_off')">M5 Spindle OFF</button>
+      <button class="btn full orange" onclick="sendMcode('cleaning')">M17 Cleaning Cycle (2 min)</button>
     </div>
   </div>
 
@@ -837,13 +862,11 @@
       setFlag('fl-pause',   d.program_paused,  'yellow');
       setFlag('fl-door',    d.door_open,       'orange');
 
-      // Stopper / locator flags
-      setFlag('fl-forward-pos', d.forward_pos, 'green');
-      setFlag('fl-left-pos',    d.left_pos,    'green');
-
-      // Vacuum & aspiration live coil read-back
-      setFlag('fl-vacuum',      d.vacuum_pump_on, 'green');
-      setFlag('fl-aspiration',  d.aspiration_on,  'green');
+      // Vacuum & pneumatics live coil read-back (confirmed coil addresses)
+      setFlag('fl-vacuum',      d.vacuum_on,      'green');
+      setFlag('fl-dust-cover',  d.dust_cover_on,  'green');
+      setFlag('fl-forward-pos', d.forward_pos_on, 'green');
+      setFlag('fl-left-pos',    d.left_pos_on,    'green');
 
       // CNC operating mode badges (R6201 – confirmed live)
       const MODES = ['MEM','MDI','ZRN','MPG','JOG','INCJOG','RAPID'];
@@ -930,6 +953,24 @@
       const badge = document.getElementById('conn-badge');
       badge.className = 'error';
       document.getElementById('conn-text').textContent = 'Error';
+    }
+  }
+
+  async function sendMcode(mcode) {
+    try {
+      const res = await fetch('/api/mcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mcode })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`✓ M-code ${mcode} sent`, true);
+      } else {
+        showToast(`✗ ${data.description || res.statusText}`, false);
+      }
+    } catch (e) {
+      showToast('✗ Network error', false);
     }
   }
 

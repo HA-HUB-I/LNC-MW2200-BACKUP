@@ -122,9 +122,31 @@ REG_SPINDLE_OVERRIDE = 8069   # Spindle speed override percentage (×10)
 REG_CNC_MODE_WORD   = 6201   # Active machine operating mode (one-hot bits)
 REG_CNC_STATUS_WORD = 6100   # Detailed mode/lamp indicator bits (includes feed-% LEDs)
 
+# MDI M-code execution registers (confirmed via live debug session)
+# Sequence: set REG_MDI_MODE=1, write REG_MDI_MCODE=M*1800, pulse REG_CMD bit 10
+REG_MDI_MODE  = 22000  # CNC mode: 1=MDI, 4=JOG, 0=MEM …  (R22000)
+REG_MDI_MCODE = 21001  # M-code value register (Mcode × 1800, e.g. M10→18000)
+REG_CMD       = 20000  # CNC command register (bit 10 = Cycle Start in MDI)
+CMD_BIT_MDI_CYCLE_START = 10  # bit 10 of REG_CMD
+
+# M-code values confirmed from BEIZA V3.pp post-processor + live capture
+# Encoding: M_code × 1800  (max M36 fits in 16 bit; larger codes use direct value)
+MCODE_VAL: dict[str, int] = {
+    "spindle_on":   3  * 1800,   # M3  = 5400   – Spindle CW ON
+    "spindle_off":  5  * 1800,   # M5  = 9000   – Spindle OFF
+    "vacuum_on":    10 * 1800,   # M10 = 18000  – Vacuum pump 1 ON  ✅ confirmed
+    "vacuum_off":   11 * 1800,   # M11 = 19800  – Vacuum pump 1 OFF ✅ confirmed (footer)
+    "cleaning":     17 * 1800,   # M17 = 30600  – Cleaning cycle (2 min)
+    # Dust cover M-codes to be confirmed via live capture (M140/M141 > 16-bit range)
+}
+
 # Instantaneous axis velocity (confirmed changing at R1004/R1005 during Y-axis JOG)
 # Both registers track the same value; goes to 0 when axis is not moving.
 REG_VELOCITY = 1004   # Instantaneous velocity of the active axis (mm/min)
+
+# Actual spindle RPM confirmed live at R1007 (18000 during spindle operation)
+# REG_SPINDLE (=7) in the main 0–13 block is NOT the spindle speed on this machine
+REG_SPINDLE_RPM = 1007   # Live spindle speed (RPM) – confirmed via debug session
 
 # Absolute machine coordinate registers (R10000–R10500 range).
 # Each axis is a signed 32-bit DWord split across two 16-bit lo/hi holding registers.
@@ -165,12 +187,17 @@ COIL_FORWARD_POS_A = 14  # Forward stopper extended  – CONFIRMED pair {14,18}
 COIL_FORWARD_POS_B = 18  # Forward stopper retracted – CONFIRMED pair {14,18}
 COIL_LEFT_POS_A    = 15  # Left stopper extended     – CONFIRMED pair {15,19}
 COIL_LEFT_POS_B    = 19  # Left stopper retracted    – CONFIRMED pair {15,19}
-COIL_DUST_COVER    = 36  # Dust cover (open/close)   – CONFIRMED coil 36
+COIL_DUST_COVER_A  = 35  # Dust cover coil A – confirmed coil 35 (both ON = open)
+COIL_DUST_COVER_B  = 36  # Dust cover coil B – confirmed coil 36 (both ON = open)
+COIL_DUST_COVER    = COIL_DUST_COVER_B  # alias used in diagnostics map
+# Spindle running indicators (confirmed coils 7+8 ON when spindle active)
+COIL_SPINDLE_A     = 7   # Spindle running indicator A
+COIL_SPINDLE_B     = 8   # Spindle running indicator B
 # Always-ON system coils (read-only feedback – do NOT write)
 # Coil 5 and 10 are always ON regardless of operator actions – likely safety/pressure relays
 
 # Allowed coil commands exposed to the API
-ALLOWED_COMMANDS = {
+ALLOWED_COMMANDS: dict[str, int | list[int]] = {
     "cycle_start":    COIL_CYCLE_START,
     "feed_hold":      COIL_FEED_HOLD,
     "reset":          COIL_RESET,
@@ -179,9 +206,10 @@ ALLOWED_COMMANDS = {
     "vacuum":         COIL_VACUUM,
     "estop":          COIL_ESTOP,
     "lot_reset":      COIL_LOT_RESET,
-    "forward_pos_on": COIL_FORWARD_POS_A,
-    "left_pos_on":    COIL_LEFT_POS_A,
-    "dust_cover":     COIL_DUST_COVER,
+    # Dual-coil pneumatic solenoids – both coils must be written together
+    "forward_pos_on": [COIL_FORWARD_POS_A, COIL_FORWARD_POS_B],
+    "left_pos_on":    [COIL_LEFT_POS_A,    COIL_LEFT_POS_B],
+    "dust_cover":     [COIL_DUST_COVER_A, COIL_DUST_COVER_B],
 }
 
 # ---------------------------------------------------------------------------
@@ -273,8 +301,12 @@ class MachineState:
     velocity_mpm: int = 0       # mm/min
 
     # Live coil states read back from the controller (FC01 read)
-    vacuum_pump_on: bool = False
-    aspiration_on: bool = False
+    # All confirmed via live toggle debug session 2026-03-29
+    vacuum_on:       bool = False   # Coil 12 – vacuum pump
+    forward_pos_on:  bool = False   # Coils {14,18} – front stopper extended
+    left_pos_on:     bool = False   # Coils {15,19} – left stopper extended
+    dust_cover_on:   bool = False   # Coils 35+36 – dust cover open (both ON = open)
+    spindle_on:      bool = False   # Coils 7+8 – spindle motor running (live coils)
 
     def decode_status_word(self) -> None:
         sw = self.status_word
@@ -459,15 +491,29 @@ class ModbusPoller(threading.Thread):
             except Exception:  # noqa: BLE001
                 pass
 
-            # FC01 – read coil states for vacuum (coil 5) and aspiration (coil 10)
-            vacuum_on = aspiration_on = False
+            # R1007 – live spindle RPM (confirmed 18000 during spindle operation)
+            live_spindle_rpm = 0
+            try:
+                rr_spdl = self._client.read_holding_registers(
+                    address=REG_SPINDLE_RPM, count=1, device_id=MODBUS_UNIT
+                )
+                if not rr_spdl.isError():
+                    live_spindle_rpm = rr_spdl.registers[0]
+            except Exception:  # noqa: BLE001
+                pass
+
+            # FC01 – read coil states (0–40 covers all confirmed coils: spindle 7+8, vacuum 12, stoppers 14–19, dust cover 35+36)
+            vacuum_on = forward_pos_on = left_pos_on = dust_cover_on = spindle_on = False
             try:
                 rr_coils = self._client.read_coils(
-                    address=0, count=11, device_id=MODBUS_UNIT
+                    address=0, count=41, device_id=MODBUS_UNIT
                 )
-                if not rr_coils.isError() and len(rr_coils.bits) >= 11:
-                    vacuum_on     = bool(rr_coils.bits[COIL_VACUUM])
-                    aspiration_on = bool(rr_coils.bits[COIL_ASPIRATION])
+                if not rr_coils.isError() and len(rr_coils.bits) >= 41:
+                    spindle_on     = bool(rr_coils.bits[COIL_SPINDLE_A]) or bool(rr_coils.bits[COIL_SPINDLE_B])
+                    vacuum_on      = bool(rr_coils.bits[COIL_VACUUM])
+                    forward_pos_on = bool(rr_coils.bits[COIL_FORWARD_POS_A]) or bool(rr_coils.bits[COIL_FORWARD_POS_B])
+                    left_pos_on    = bool(rr_coils.bits[COIL_LEFT_POS_A])    or bool(rr_coils.bits[COIL_LEFT_POS_B])
+                    dust_cover_on  = bool(rr_coils.bits[COIL_DUST_COVER_A])  or bool(rr_coils.bits[COIL_DUST_COVER_B])
             except Exception:  # noqa: BLE001
                 pass
 
@@ -491,7 +537,7 @@ class ModbusPoller(threading.Thread):
                 _state.x_pos = _regs_to_int32(regs[REG_X_LO], regs[REG_X_HI]) / 1000.0
                 _state.y_pos = _regs_to_int32(regs[REG_Y_LO], regs[REG_Y_HI]) / 1000.0
                 _state.z_pos = _regs_to_int32(regs[REG_Z_LO], regs[REG_Z_HI]) / 1000.0
-                _state.spindle_rpm = regs[REG_SPINDLE]
+                _state.spindle_rpm = live_spindle_rpm   # R1007 – confirmed live
                 _state.feed_rate = regs[REG_FEED]
                 _state.alarm_code = regs[REG_ALARM]
                 _state.program_number = regs[REG_PROGRAM]
@@ -520,8 +566,11 @@ class ModbusPoller(threading.Thread):
                 _state.rapid_override_pct   = rapid_ovr   // 10
                 _state.spindle_override_pct = spindle_ovr // 10
                 _state.velocity_mpm = velocity_mpm
-                _state.vacuum_pump_on = vacuum_on
-                _state.aspiration_on  = aspiration_on
+                _state.vacuum_on      = vacuum_on
+                _state.forward_pos_on = forward_pos_on
+                _state.left_pos_on    = left_pos_on
+                _state.dust_cover_on  = dust_cover_on
+                _state.spindle_on     = spindle_on
 
         except Exception as exc:  # noqa: BLE001
             with _state_lock:
@@ -573,8 +622,10 @@ def _state_snapshot() -> dict:
         snap["pkt_counter"],
         snap["cnc_mode_word"],       # R6201 – confirmed live
         snap["cnc_status_word"],     # R6100 – confirmed live
-        snap["vacuum_pump_on"],      # Coil 5 – confirmed live
-        snap["aspiration_on"],       # Coil 10 – confirmed live
+        snap["vacuum_on"],           # Coil 12 – confirmed live
+        snap["forward_pos_on"],      # Coils 14/18 – confirmed live
+        snap["left_pos_on"],         # Coils 15/19 – confirmed live
+        snap["spindle_on"],          # Coils 7+8   – confirmed live
     ])
     return snap
 
@@ -595,8 +646,10 @@ def api_status():
 @app.route("/api/command", methods=["POST"])
 def api_command():
     """
-    Write a single coil to issue a command.
+    Write one or more coils to issue a command.
     Body: { "command": "<name>", "value": true|false }
+    Commands mapped to a list of coils (e.g. dual-coil pneumatic stoppers)
+    will write all coils in the list to the same value.
     """
     body = request.get_json(force=True, silent=True) or {}
     command = body.get("command", "")
@@ -606,14 +659,18 @@ def api_command():
         abort(400, description=f"Unknown command '{command}'. "
               f"Allowed: {list(ALLOWED_COMMANDS)}")
 
-    coil_addr = ALLOWED_COMMANDS[command]
+    coil_addrs = ALLOWED_COMMANDS[command]
+    if isinstance(coil_addrs, int):
+        coil_addrs = [coil_addrs]
+
     client = ModbusTcpClient(host=MODBUS_HOST, port=MODBUS_PORT)
     try:
         if not client.connect():
             abort(503, description="Cannot connect to Modbus server")
-        result = client.write_coil(coil_addr, value, device_id=MODBUS_UNIT)
-        if result.isError():
-            abort(502, description=f"Modbus write error: {result}")
+        for addr in coil_addrs:
+            result = client.write_coil(addr, value, device_id=MODBUS_UNIT)
+            if result.isError():
+                abort(502, description=f"Modbus write error on coil {addr}: {result}")
     except ModbusException as exc:
         abort(502, description=str(exc))
     finally:
@@ -676,6 +733,73 @@ def api_stopper():
     return jsonify({"ok": True, "stopper": stopper, "value": value})
 
 
+@app.route("/api/mcode", methods=["POST"])
+def api_mcode():
+    """
+    Execute a named M-code via MDI mode.
+
+    The machine is switched to MDI mode (R22000=1), the M-code value is written
+    to R21001 (encoding = M_code_number × 1800), then a Cycle Start pulse is
+    sent on R20000 bit 10.
+
+    Body: { "mcode": "vacuum_on" | "vacuum_off" | "spindle_on" | "spindle_off" | "cleaning" }
+
+    IMPORTANT: Cycle Start re-executes the MDI TEXT BUFFER on the controller,
+    not just R21001.  For this to work the matching M-code text must already be
+    in the MDI buffer (e.g. type it on the HMI keypad first), OR this is the
+    first MDI command since power-on.
+
+    vacuum_on  (M10) – confirmed working when M10 is in the MDI buffer.
+    vacuum_off (M11) – requires M11 to be in the MDI buffer first.
+    """
+    body = request.get_json(force=True, silent=True) or {}
+    mcode_name = body.get("mcode", "")
+
+    if mcode_name not in MCODE_VAL:
+        abort(400, description=f"Unknown mcode '{mcode_name}'. "
+              f"Allowed: {list(MCODE_VAL)}")
+
+    mcode_value = MCODE_VAL[mcode_name]
+
+    client = ModbusTcpClient(host=MODBUS_HOST, port=MODBUS_PORT)
+    try:
+        if not client.connect():
+            abort(503, description="Cannot connect to Modbus server")
+
+        # 1 – ensure MDI mode (R22000 = 1)
+        rr_mode = client.read_holding_registers(REG_MDI_MODE, count=1, device_id=MODBUS_UNIT)
+        if rr_mode.isError():
+            abort(502, description=f"Cannot read mode register: {rr_mode}")
+
+        if rr_mode.registers[0] != 1:
+            wr = client.write_register(REG_MDI_MODE, 1, device_id=MODBUS_UNIT)
+            if wr.isError():
+                abort(502, description=f"Cannot switch to MDI mode: {wr}")
+            time.sleep(0.25)
+
+        # 2 – write M-code value to R21001
+        wr2 = client.write_register(REG_MDI_MCODE, mcode_value, device_id=MODBUS_UNIT)
+        if wr2.isError():
+            abort(502, description=f"Cannot write M-code register: {wr2}")
+        time.sleep(0.1)
+
+        # 3 – pulse Cycle Start (R20000 bit 10)
+        cycle_bit = 1 << CMD_BIT_MDI_CYCLE_START   # = 1024
+        wr3 = client.write_register(REG_CMD, cycle_bit, device_id=MODBUS_UNIT)
+        if wr3.isError():
+            abort(502, description=f"Cannot send Cycle Start: {wr3}")
+        time.sleep(0.3)
+        client.write_register(REG_CMD, 0, device_id=MODBUS_UNIT)
+
+    except ModbusException as exc:
+        abort(502, description=str(exc))
+    finally:
+        client.close()
+
+    return jsonify({"ok": True, "mcode": mcode_name, "register_value": mcode_value})
+
+
+
 @app.route("/api/diagnostics")
 def api_diagnostics():
     """
@@ -731,10 +855,14 @@ def api_diagnostics():
             {"address": COIL_RESET,       "name": "reset",        "description": "Reset / Clear Alarm"},
             {"address": COIL_SPINDLE_CW,  "name": "spindle_cw",   "description": "Spindle CW"},
             {"address": COIL_SPINDLE_CCW, "name": "spindle_ccw",  "description": "Spindle CCW"},
-            {"address": COIL_VACUUM_PUMP, "name": "vacuum_pump",  "description": "Vacuum Pump 1 ON (Coolant coil in generic LNC firmware)"},
-            {"address": COIL_ESTOP,       "name": "estop",        "description": "Software E-Stop"},
-            {"address": COIL_LOT_RESET,   "name": "lot_reset",    "description": "Lot Reset"},
-            {"address": COIL_ASPIRATION,  "name": "aspiration",   "description": "Aspiration / Vacuum Cleaner ON – coil address unverified, confirm with /api/scan"},
+            {"address": COIL_VACUUM,          "name": "vacuum",          "description": "Vacuum pump ON/OFF – confirmed Coil 12"},
+            {"address": COIL_FORWARD_POS_A,   "name": "forward_pos_a",   "description": "Forward Pos solenoid A – confirmed Coil 14"},
+            {"address": COIL_FORWARD_POS_B,   "name": "forward_pos_b",   "description": "Forward Pos solenoid B – confirmed Coil 18"},
+            {"address": COIL_LEFT_POS_A,      "name": "left_pos_a",      "description": "Left Pos solenoid A – confirmed Coil 15"},
+            {"address": COIL_LEFT_POS_B,      "name": "left_pos_b",      "description": "Left Pos solenoid B – confirmed Coil 19"},
+            {"address": COIL_DUST_COVER,      "name": "dust_cover",      "description": "Dust cover open/close – confirmed Coil 36"},
+            {"address": COIL_ESTOP,           "name": "estop",           "description": "Software E-Stop"},
+            {"address": COIL_LOT_RESET,       "name": "lot_reset",       "description": "Lot Reset"},
         ],
         "status_bits": [
             {"bit": 0, "description": "Emergency Stop active"},
@@ -746,9 +874,9 @@ def api_diagnostics():
             {"bit": 6, "description": "Program paused"},
             {"bit": 7, "description": "Door open"},
         ],
-        "stopper_bits": [
-            {"register": "R20104/R20204", "bit": BIT_FORWARD_POS, "name": "forward_pos", "description": "FORWARD POS – front stopper"},
-            {"register": "R20104/R20204", "bit": BIT_LEFT_POS,    "name": "left_pos",    "description": "LEFT POS – left stopper"},
+        "stopper_coils": [
+            {"coils": [COIL_FORWARD_POS_A, COIL_FORWARD_POS_B], "name": "forward_pos_on", "description": "FORWARD POS – front stopper (both coils ON = extended). Confirmed Coils 14+18."},
+            {"coils": [COIL_LEFT_POS_A,    COIL_LEFT_POS_B],    "name": "left_pos_on",    "description": "LEFT POS – left stopper (both coils ON = extended). Confirmed Coils 15+19."},
         ],
     }
 
@@ -775,9 +903,8 @@ def api_diagnostics():
             "Use /api/scan to read raw register values and verify the endpoint mapping",
             "Cycle time and total session machining time are computed by the web app from the cycle_running status bit – they reset when the web server restarts",
             "idle_time_s (R[5001]) is the Modbus connection idle counter from the controller, not total machine uptime",
-            "Stopper status is read from R20204 (PLC→HMI), command written to R20104 (HMI→PLC) via /api/stopper",
-            "Coil 5 (vacuum_pump) controls Vacuum Pump 1 – labelled 'Coolant' in the generic LNC firmware",
-            "Coil 8 (aspiration) address is unverified – use /api/scan to confirm it responds before relying on it",
+            "Stopper state is read via FC01 coils: Forward Pos = coils 14+18, Left Pos = coils 15+19 (both ON = extended). R20104/R20204 registers are NOT used on this machine.",
+            "Vacuum pump = Coil 12. Dust cover = Coil 36. All confirmed via live toggle debug session.",
             "Absolute machine coordinates are in R10000–R10005 (0-based); Modbus 1-based addresses: 10001–10006",
             "G-code current line is at R8102 (0-based); address is unverified – confirm with /api/scan on your controller",
             "R0–R999 are user registers (empty unless PLC logic copies data into them); R8000–R8999 are system-status registers; R10000–R10500 hold axis coordinates",
