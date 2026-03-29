@@ -400,6 +400,75 @@
       letter-spacing: -.02em;
     }
 
+    /* ── Machine mode badge ───────────────────────────────────────── */
+    .mode-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .3rem .8rem;
+      border-radius: 8px;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+      background: #1e293b;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      transition: all .3s;
+    }
+    .mode-badge.active {
+      background: #0c2a4a;
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* ── Override bars ────────────────────────────────────────────── */
+    .ovr-row {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-top: .4rem;
+    }
+    .ovr-label {
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      min-width: 2.2rem;
+    }
+    .ovr-value {
+      font-size: .82rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+      min-width: 3rem;
+      text-align: right;
+    }
+    .ovr-bar-wrap {
+      flex: 1;
+      height: 5px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .ovr-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .4s;
+    }
+
+    /* ── INI config notice ────────────────────────────────────────── */
+    .notice-bar {
+      margin-top: .75rem;
+      padding: .4rem .7rem;
+      background: #1c1f0044;
+      border: 1px solid #3a3f00;
+      border-radius: 6px;
+      font-size: .68rem;
+      color: #a3a300;
+      line-height: 1.45;
+    }
+
     #scan-errors {
       margin-top: .4rem;
       font-size: .72rem;
@@ -427,6 +496,19 @@
   <!-- Status flags -->
   <div class="card">
     <h2>Machine Status</h2>
+    <!-- Machine operating mode (live from R6201) -->
+    <div style="margin-bottom:.6rem">
+      <div class="subsection-label">Operating Mode (R6201)</div>
+      <div class="flags">
+        <span class="mode-badge" id="mode-MEM">MEM</span>
+        <span class="mode-badge" id="mode-MDI">MDI</span>
+        <span class="mode-badge" id="mode-ZRN">ZRN</span>
+        <span class="mode-badge" id="mode-MPG">MPG</span>
+        <span class="mode-badge" id="mode-JOG">JOG</span>
+        <span class="mode-badge" id="mode-INCJOG">INC-JOG</span>
+        <span class="mode-badge" id="mode-RAPID">RAPID</span>
+      </div>
+    </div>
     <div class="flags">
       <span class="flag" id="fl-estop">E-Stop</span>
       <span class="flag" id="fl-alarm">Alarm</span>
@@ -436,6 +518,14 @@
       <span class="flag" id="fl-spindle">Spindle ON</span>
       <span class="flag" id="fl-pause">Paused</span>
       <span class="flag" id="fl-door">Door Open</span>
+    </div>
+    <!-- Pneumatics / auxiliary live coil states -->
+    <div style="margin-top:.6rem">
+      <div class="subsection-label">Pneumatics &amp; Vacuum</div>
+      <div class="flags">
+        <span class="flag" id="fl-vacuum">Vacuum Pump</span>
+        <span class="flag" id="fl-aspiration">Aspiration</span>
+      </div>
     </div>
     <div style="margin-top:.6rem">
       <div class="subsection-label">Stoppers / Locators</div>
@@ -482,6 +572,12 @@
       <span class="axis-label">Z</span>
       <span><span class="axis-value axis-value-sm" id="val-abs-z">0.000</span>&nbsp;<span class="axis-unit">mm</span></span>
     </div>
+    <div class="notice-bar">
+      ⚠ Position registers (R0–R13) show zero — the controller's
+      <code>Eth_ModbusServerTCP.ini</code> has no <code>[Register]</code>
+      section mapping axis positions. Add LNC internal variable addresses
+      to expose live X/Y/Z coordinates.
+    </div>
   </div>
 
   <!-- Spindle & Feed -->
@@ -499,6 +595,33 @@
         <span class="gauge-value"><span id="val-feed">0</span> mm/min</span>
       </div>
       <div class="gauge-bar"><div class="gauge-fill" id="bar-feed" style="width:0%;background:var(--green)"></div></div>
+
+      <!-- Instantaneous axis velocity (live from R1004; confirmed via debug session) -->
+      <div class="gauge-label-row" style="margin-top:.5rem">
+        <span>Axis Velocity (R1004)</span>
+        <span class="gauge-value"><span id="val-velocity">0</span> mm/min</span>
+      </div>
+      <div class="gauge-bar"><div class="gauge-fill" id="bar-velocity" style="width:0%;background:var(--yellow)"></div></div>
+    </div>
+
+    <!-- Override percentages (live from R8067–R8069) -->
+    <div style="margin-top:.85rem">
+      <div class="subsection-label">Overrides</div>
+      <div class="ovr-row">
+        <span class="ovr-label">Feed</span>
+        <span class="ovr-value" id="val-ovr-feed">100%</span>
+        <div class="ovr-bar-wrap"><div class="ovr-bar-fill" id="bar-ovr-feed" style="width:100%;background:var(--green)"></div></div>
+      </div>
+      <div class="ovr-row">
+        <span class="ovr-label">Rapid</span>
+        <span class="ovr-value" id="val-ovr-rapid">100%</span>
+        <div class="ovr-bar-wrap"><div class="ovr-bar-fill" id="bar-ovr-rapid" style="width:100%;background:var(--accent)"></div></div>
+      </div>
+      <div class="ovr-row">
+        <span class="ovr-label">Spdl</span>
+        <span class="ovr-value" id="val-ovr-spindle">100%</span>
+        <div class="ovr-bar-wrap"><div class="ovr-bar-fill" id="bar-ovr-spindle" style="width:100%;background:var(--orange)"></div></div>
+      </div>
     </div>
   </div>
 
@@ -625,11 +748,17 @@
         <tr><td>10002+10003</td><td>Absolute Y – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10003–10004</td></tr>
         <tr><td>10004+10005</td><td>Absolute Z – signed 32-bit lo/hi (×0.001 mm); Modbus 1-based: 10005–10006</td></tr>
         <tr><td>32–45</td><td>Possible alternate location for main data (RegisterMode=-32 in Eth_ModbusServerTCP.ini may shift user registers by +32)</td></tr>
+        <tr><td>1004</td><td>⚡ Instantaneous axis velocity (mm/min) – CONFIRMED LIVE during JOG; goes to 0 when stopped</td></tr>
+        <tr><td>6100</td><td>⚡ CNC status/lamp word (R6100) – CONFIRMED LIVE; mode indicator bits including feed-% LEDs</td></tr>
+        <tr><td>6201</td><td>⚡ CNC mode word (R6201) – CONFIRMED LIVE; bit 1=MEM, 2=MDI, 3=ZRN, 4=MPG, 5=JOG, 6=INCJOG, 7=RP1, 8=RP2</td></tr>
+        <tr><td>8067</td><td>Feed rate override (×10; 1000=100%) – confirmed present at R8067</td></tr>
+        <tr><td>8068</td><td>Rapid traverse override (×10; 1000=100%) – confirmed present at R8068</td></tr>
+        <tr><td>8069</td><td>Spindle speed override (×10; 1000=100%) – confirmed present at R8069</td></tr>
         <tr><td>FC2: 0–15</td><td>Discrete inputs (FC2/read_discrete_inputs) – physical sensor / limit-switch states; check /api/scan discrete_input rows</td></tr>
       </tbody>
     </table>
     <p style="margin-top:.5rem;font-size:.68rem;color:var(--muted)">
-      Coils (0-based): 0=Cycle Start, 1=Feed Hold, 2=Reset, 3=Spindle CW, 4=Spindle CCW, 5=Vacuum Pump 1, 6=E-Stop, 7=Lot Reset, 8=Aspiration<br>
+      Coils (0-based): 0=Cycle Start, 1=Feed Hold, 2=Reset, 3=Spindle CW, 4=Spindle CCW, 5=Vacuum Pump 1, 6=E-Stop, 7=Lot Reset, 10=Aspiration (confirmed via live debug)<br>
       Stoppers via <code>/api/stopper</code>: <code>{"stopper":"forward_pos","value":true}</code> or <code>{"stopper":"left_pos","value":false}</code>
     </p>
   </div>
@@ -712,6 +841,17 @@
       setFlag('fl-forward-pos', d.forward_pos, 'green');
       setFlag('fl-left-pos',    d.left_pos,    'green');
 
+      // Vacuum & aspiration live coil read-back
+      setFlag('fl-vacuum',      d.vacuum_pump_on, 'green');
+      setFlag('fl-aspiration',  d.aspiration_on,  'green');
+
+      // CNC operating mode badges (R6201 – confirmed live)
+      const MODES = ['MEM','MDI','ZRN','MPG','JOG','INCJOG','RAPID'];
+      MODES.forEach(m => {
+        const el = document.getElementById('mode-' + m);
+        if (el) el.className = 'mode-badge' + (d.cnc_mode === m ? ' active' : '');
+      });
+
       // Alarm banner
       const banner = document.getElementById('alarm-banner');
       if (d.alarm_active && d.alarm_code) {
@@ -736,6 +876,19 @@
       document.getElementById('bar-spindle').style.width  = pct(d.spindle_rpm, MAX_SPINDLE) + '%';
       document.getElementById('val-feed').textContent = d.feed_rate;
       document.getElementById('bar-feed').style.width  = pct(d.feed_rate, MAX_FEED) + '%';
+
+      // Instantaneous axis velocity (R1004 – confirmed live during jog test)
+      document.getElementById('val-velocity').textContent = d.velocity_mpm;
+      document.getElementById('bar-velocity').style.width  = pct(d.velocity_mpm, MAX_FEED) + '%';
+
+      // Override percentages (R8067–R8069, ×10 decoded in backend)
+      function setOvr(id, barId, val) {
+        document.getElementById(id).textContent = val + '%';
+        document.getElementById(barId).style.width = Math.min(100, val / 150 * 100).toFixed(1) + '%';
+      }
+      setOvr('val-ovr-feed',    'bar-ovr-feed',    d.feed_override_pct);
+      setOvr('val-ovr-rapid',   'bar-ovr-rapid',   d.rapid_override_pct);
+      setOvr('val-ovr-spindle', 'bar-ovr-spindle', d.spindle_override_pct);
 
       // Program / alarm code / G-code line
       document.getElementById('val-program').textContent  = d.program_number || '—';

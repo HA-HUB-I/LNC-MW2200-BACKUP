@@ -1,0 +1,65 @@
+This is the key. The LNC controller uses `RegisterMode=-32`, which likely means it uses a -32768 offset or some kind of negative base address. This could mean the Modbus addresses are shifted.
+
+  In LNC CNC controllers, `RegisterMode` affects how register addresses are mapped. With `RegisterMode=-32`, it's possible that:
+  1. The register addresses are shifted by -32 (unlikely to make much difference)
+  2. Or it could mean the controller maps registers differently
+
+  Actually, looking at this more carefully - `RegisterMode=-32` in LNC context likely means the controller maps its internal R-registers with a -32 bias.
+
+  So when the app reads a Modbus address, there's likely an offset applied—the controller's internal R-register might be offset by 32 positions from what the INI file specifies. Looking at the diagnostic
+  registers like `OpenPortResultAddr=5001`, I need to figure out whether this address gets adjusted by the -32 offset or if it's already accounting for it. 0-based PDU address = 5000 ✓
+  - These diagnostic registers all returned 0 in our scan
+
+  But `RegisterMode=-32` is suspicious. In LNC Modbus TCP, this likely defines how the base addressing works—possibly offsetting 32-bit register pairs or wrapping the address space in some way.
+
+  Looking at what actually came back with data, I'm seeing a clear pattern: R202-R203, R209, then larger blocks at R1000-R1049, R8000-R8119, R9000-R9050, R9982-R9999, plus scattered registers like
+  R10004-R10005 and R20200, R20203, R40003, R40009, R40023, R40030. The R9000 range is particularly interesting—R9000 shows 65410, R9001 is 4622, R9002 is 12, R9003 is 36000, R9004 is 10—these look like
+  they could be machine state or configuration parameters.
+
+  Now I'm testing whether these form 32-bit values. If R9000-R9001 combine as a signed 32-bit position, the math gives either 303.3 mm or -8245 mm depending on byte order, and neither quite makes sense for
+   a small wood CNC unless the scale factor is different than expected.
+
+  Let me reconsider treating each register as an individual 16-bit position instead—R9000 as -126 mm, R9001 as 4.622 mm, R9003 as 36 mm, R9004 as 10 mm. These individual values feel more reasonable for
+  actual machine coordinates, so I should check what typical working dimensions are for this type of equipment. 500mm x 200mm
+  - If X=36.000mm and Y=10.000mm and something else at 12... these seem small but plausible for a homing position
+
+  Let me reconsider the register format. What if positions are stored as 32-bit pairs at R9000+ in standard lo/hi format? Testing that theory with the values I see gives me either 303.3mm or something way
+  too large depending on byte order, so that's not matching up either. I should look at other register ranges like R8100-R8102 which had values like 20000 and 8000. And thinking more carefully about
+  RegisterMode=-32, that might mean the 1-based register numbers in the ini file map to controller internal variables with a different base offset. If the diagnostic registers at 5001 (1-based) correspond
+  to 5000 (0-based), that could explain why they read as zero.
+
+  The real question is finding the correct 0-based PDU addresses for the actual machine data I need—axis positions, status, spindle speed, feed rate. The scan shows activity in the R8000-R8119 range, so
+  I'm examining those registers more closely. R8000 contains 32816, which breaks down to specific bit flags set—bit 15, bit 5, and bit 4—suggesting it's a status word encoding machine state.
+
+  Looking further down, R8040 has a different pattern with bits 10 and 4 set. Then in the R8050-R8119 block, I'm seeing what looks like another status word at R8050, but more importantly R8052 shows 10000,
+   which is almost certainly spindle speed at 10000 RPM. The registers R8061-R8063 contain small values like 2, 2, 1—possibly axis counts or configuration. And R8067-R8069 all hold 1000, which could be
+  scaling factors or override percentages representing 100.0%.
+
+  Moving into the higher registers, R8100-R8101 both show 20000, which might be maximum speeds or position limits. R8102 is 8000, R8103 is 1500, R8104 is 10000—these look like various machine parameters.
+  R8105-R8106 are both 55000, possibly rapid traverse speeds in mm/min.
+
+  In the R9982-R9999 range, I'm seeing a sequence of small numbers: 22, 6, 31, 7, 4, 15, 36, 5. The value 15 at R9987 is interesting because if the current time is UTC+3 (Bulgaria timezone), that would be
+  15:16:59 locally, suggesting this register might be storing the hour component of the current time. I'm trying different interpretations of these register values to match the scan timestamp, but the time
+   components aren't aligning cleanly—15:36 doesn't quite fit if the scan started around 15:16 Sofia time. Let me shift focus to finding the axis position data instead, since that's what actually matters
+  for the dashboard. I'll check the R9000 range to see if those values might encode position information.
+
+  Looking at the R1000 block, those 10000 values could represent spindle speed at 10000 RPM, but I think the real breakthrough would be running a longer scan with the machine actively moving between polls
+  to identify which registers actually change—that would pinpoint the live motion data I'm looking for.
+
+  R9982-R9994 - likely date/time registers:
+  - R9982=22 (seconds?)
+  - R9983=6 (minutes? but 16 minutes have passed since UTC 12:16, so locally 15:16 = hour 15)
+  - R9984=31 (? - could be seconds)
+  - R9985=7 (day of week? 7=Sunday? March 29, 2026 IS a Sunday!)
+  - R9986=4 (?)
+  - R9987=15 (hour? 15:xx matches Sofia time UTC+3)
+
+
+  - R9988=36 (minutes)
+  - R9989=5 (seconds)
+  - R9991=29 (day of month)
+
+  So the time structure is becoming clearer: R9987 holds the hour in Sofia timezone (15), R9988 the minutes (36), and R9989 the seconds (5), which would give 15:36:05. The day register R9991=29 matches
+  March 29th perfectly. Let me verify this against the UTC timestamp to confirm the timezone offset. I'm seeing a clear pattern emerge with the status and control registers. The R8000 and R8050 registers
+  contain status bits that indicate the machine is actively running, R8052 shows the spindle speed at 10,000 RPM, and those override registers are using a standard CNC encoding where 1000 represents
+  100.0%. Most intriguingly, R8110-R8117 are mirroring the values from R1020-R1027, suggesting these might be shadow registers or a confirmation mechanism.

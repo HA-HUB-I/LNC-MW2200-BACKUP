@@ -110,6 +110,22 @@ REG_LOT_ID = 13
 # System-status registers (R8000–R8999 range)
 REG_GCODE_LINE = 8102   # Current G-code line being executed (R8102); unverified – confirm with /api/scan
 
+# Override registers (confirmed present at R8067–R8069, ×10 encoded; 1000 = 100%)
+REG_FEED_OVERRIDE    = 8067   # Feed rate override percentage (×10)
+REG_RAPID_OVERRIDE   = 8068   # Rapid traverse override percentage (×10)
+REG_SPINDLE_OVERRIDE = 8069   # Spindle speed override percentage (×10)
+
+# CNC-PLC interface registers (confirmed live via debug session 2026-03-29)
+# R6201 – active machine mode word; bits are 1-indexed per LNC str file:
+#   bit 1 = MEM, bit 2 = MDI, bit 3 = ZRN (home), bit 4 = MPG (handwheel),
+#   bit 5 = JOG, bit 6 = INCJOG, bit 7 = RP1, bit 8 = RP2
+REG_CNC_MODE_WORD   = 6201   # Active machine operating mode (one-hot bits)
+REG_CNC_STATUS_WORD = 6100   # Detailed mode/lamp indicator bits (includes feed-% LEDs)
+
+# Instantaneous axis velocity (confirmed changing at R1004/R1005 during Y-axis JOG)
+# Both registers track the same value; goes to 0 when axis is not moving.
+REG_VELOCITY = 1004   # Instantaneous velocity of the active axis (mm/min)
+
 # Absolute machine coordinate registers (R10000–R10500 range).
 # Each axis is a signed 32-bit DWord split across two 16-bit lo/hi holding registers.
 # 0-based PDU addresses (Modbus 1-based = 0-based address + 1):
@@ -135,28 +151,37 @@ REG_PKG_EXCEPTION  = 5008   # PkgExcptionAddr=5009 (exception packets)
 # Number of diagnostic registers to read in one block starting at REG_CONN_STATUS
 _DIAG_REG_COUNT = REG_PKG_EXCEPTION - REG_CONN_STATUS + 1  # 9 registers
 
-# Coil addresses (0-based)
-COIL_CYCLE_START = 0
-COIL_FEED_HOLD = 1
-COIL_RESET = 2
-COIL_SPINDLE_CW = 3
-COIL_SPINDLE_CCW = 4
-COIL_VACUUM_PUMP = 5    # Vacuum Pump 1 (labelled "Coolant" in generic LNC firmware)
-COIL_ESTOP = 6
-COIL_LOT_RESET = 7
-COIL_ASPIRATION = 8     # Aspiration / Vacuum Cleaner – address is UNVERIFIED; confirm with /api/scan on the actual machine
+# Coil addresses (0-based) — confirmed via live toggle debug session 2026-03-29
+COIL_CYCLE_START  = 0
+COIL_FEED_HOLD    = 1   # also fires briefly on alarm clear
+COIL_RESET        = 2
+COIL_SPINDLE_CW   = 3
+COIL_SPINDLE_CCW  = 4
+COIL_VACUUM       = 12  # Vacuum pump – CONFIRMED coil 12 (toggled off = coil 12 went OFF)
+COIL_ESTOP        = 6
+COIL_LOT_RESET    = 7
+# Pneumatic stopper solenoids (dual-coil – both members of pair must be read for state)
+COIL_FORWARD_POS_A = 14  # Forward stopper extended  – CONFIRMED pair {14,18}
+COIL_FORWARD_POS_B = 18  # Forward stopper retracted – CONFIRMED pair {14,18}
+COIL_LEFT_POS_A    = 15  # Left stopper extended     – CONFIRMED pair {15,19}
+COIL_LEFT_POS_B    = 19  # Left stopper retracted    – CONFIRMED pair {15,19}
+COIL_DUST_COVER    = 36  # Dust cover (open/close)   – CONFIRMED coil 36
+# Always-ON system coils (read-only feedback – do NOT write)
+# Coil 5 and 10 are always ON regardless of operator actions – likely safety/pressure relays
 
 # Allowed coil commands exposed to the API
 ALLOWED_COMMANDS = {
-    "cycle_start": COIL_CYCLE_START,
-    "feed_hold": COIL_FEED_HOLD,
-    "reset": COIL_RESET,
-    "spindle_cw": COIL_SPINDLE_CW,
-    "spindle_ccw": COIL_SPINDLE_CCW,
-    "vacuum_pump": COIL_VACUUM_PUMP,
-    "estop": COIL_ESTOP,
-    "lot_reset": COIL_LOT_RESET,
-    "aspiration": COIL_ASPIRATION,
+    "cycle_start":    COIL_CYCLE_START,
+    "feed_hold":      COIL_FEED_HOLD,
+    "reset":          COIL_RESET,
+    "spindle_cw":     COIL_SPINDLE_CW,
+    "spindle_ccw":    COIL_SPINDLE_CCW,
+    "vacuum":         COIL_VACUUM,
+    "estop":          COIL_ESTOP,
+    "lot_reset":      COIL_LOT_RESET,
+    "forward_pos_on": COIL_FORWARD_POS_A,
+    "left_pos_on":    COIL_LEFT_POS_A,
+    "dust_cover":     COIL_DUST_COVER,
 }
 
 # ---------------------------------------------------------------------------
@@ -233,6 +258,24 @@ class MachineState:
     # G-code current line number (from R8102; may be zero if not supported)
     gcode_line: int = 0
 
+    # ── Live data confirmed via debug session (2026-03-29) ──────────────────
+    # CNC operating mode decoded from R6201 (CNC-PLC interface register)
+    cnc_mode: str = ""          # "MEM" / "MDI" / "JOG" / "ZRN" / "MPG" / "INCJOG" / "RAPID"
+    cnc_mode_word: int = 0      # raw R6201 value
+    cnc_status_word: int = 0    # raw R6100 value (lamp/indicator bits)
+
+    # Override percentages from R8067–R8069 (×10 encoded; 1000 = 100%)
+    feed_override_pct: int = 100
+    rapid_override_pct: int = 100
+    spindle_override_pct: int = 100
+
+    # Instantaneous velocity of the active axis (R1004); 0 when axis is not moving
+    velocity_mpm: int = 0       # mm/min
+
+    # Live coil states read back from the controller (FC01 read)
+    vacuum_pump_on: bool = False
+    aspiration_on: bool = False
+
     def decode_status_word(self) -> None:
         sw = self.status_word
         self.estop_active = bool(sw & (1 << 0))
@@ -243,6 +286,30 @@ class MachineState:
         self.spindle_running = bool(sw & (1 << 5))
         self.program_paused = bool(sw & (1 << 6))
         self.door_open = bool(sw & (1 << 7))
+
+    def decode_cnc_mode(self) -> None:
+        """Decode R6201 CNC-PLC mode word into a human-readable mode name.
+
+        Bits are 1-indexed per LNC sys_cnc_plc_0001_utf8.str:
+          bit 1 = MEM, bit 2 = MDI, bit 3 = ZRN, bit 4 = MPG,
+          bit 5 = JOG, bit 6 = INCJOG, bit 7 = RP1, bit 8 = RP2
+        """
+        mw = self.cnc_mode_word
+        # Map 0-based bit position → mode name (bit 1 in LNC = index 0)
+        _mode_map = [
+            (0, "MEM"),
+            (1, "MDI"),
+            (2, "ZRN"),
+            (3, "MPG"),
+            (4, "JOG"),
+            (5, "INCJOG"),
+            (6, "RAPID"),
+        ]
+        for bit, name in _mode_map:
+            if mw & (1 << bit):
+                self.cnc_mode = name
+                return
+        self.cnc_mode = ""
 
 
 _state = MachineState()
@@ -345,6 +412,65 @@ class ModbusPoller(threading.Thread):
             except Exception:  # noqa: BLE001
                 pass
 
+            # ── Live CNC-PLC registers (confirmed via debug session) ─────────
+            # R6201 – active machine mode (one-hot bits; JOG/MEM/MDI/ZRN/MPG…)
+            cnc_mode_word = 0
+            try:
+                rr_mode = self._client.read_holding_registers(
+                    address=REG_CNC_MODE_WORD, count=1, device_id=MODBUS_UNIT
+                )
+                if not rr_mode.isError():
+                    cnc_mode_word = rr_mode.registers[0]
+            except Exception:  # noqa: BLE001
+                pass
+
+            # R6100 – detailed mode/lamp status word
+            cnc_status_word = 0
+            try:
+                rr_sts = self._client.read_holding_registers(
+                    address=REG_CNC_STATUS_WORD, count=1, device_id=MODBUS_UNIT
+                )
+                if not rr_sts.isError():
+                    cnc_status_word = rr_sts.registers[0]
+            except Exception:  # noqa: BLE001
+                pass
+
+            # R8067–R8069 – override percentages (×10; 1000 = 100%)
+            feed_ovr = rapid_ovr = spindle_ovr = 1000
+            try:
+                rr_ovr = self._client.read_holding_registers(
+                    address=REG_FEED_OVERRIDE, count=3, device_id=MODBUS_UNIT
+                )
+                if not rr_ovr.isError() and len(rr_ovr.registers) >= 3:
+                    feed_ovr    = rr_ovr.registers[0]
+                    rapid_ovr   = rr_ovr.registers[1]
+                    spindle_ovr = rr_ovr.registers[2]
+            except Exception:  # noqa: BLE001
+                pass
+
+            # R1004 – instantaneous axis velocity (mm/min; 0 when stopped)
+            velocity_mpm = 0
+            try:
+                rr_vel = self._client.read_holding_registers(
+                    address=REG_VELOCITY, count=1, device_id=MODBUS_UNIT
+                )
+                if not rr_vel.isError():
+                    velocity_mpm = rr_vel.registers[0]
+            except Exception:  # noqa: BLE001
+                pass
+
+            # FC01 – read coil states for vacuum (coil 5) and aspiration (coil 10)
+            vacuum_on = aspiration_on = False
+            try:
+                rr_coils = self._client.read_coils(
+                    address=0, count=11, device_id=MODBUS_UNIT
+                )
+                if not rr_coils.isError() and len(rr_coils.bits) >= 11:
+                    vacuum_on     = bool(rr_coils.bits[COIL_VACUUM])
+                    aspiration_on = bool(rr_coils.bits[COIL_ASPIRATION])
+            except Exception:  # noqa: BLE001
+                pass
+
             # Cycle-time tracking (computed from the cycle_running status bit)
             now = time.time()
             cycle_running_now = bool(regs[REG_STATUS] & (1 << 2))
@@ -386,6 +512,16 @@ class ModbusPoller(threading.Thread):
                 _state.abs_x_pos   = abs_x
                 _state.abs_y_pos   = abs_y
                 _state.abs_z_pos   = abs_z
+                # Live CNC-PLC data
+                _state.cnc_mode_word    = cnc_mode_word
+                _state.cnc_status_word  = cnc_status_word
+                _state.decode_cnc_mode()
+                _state.feed_override_pct    = feed_ovr    // 10
+                _state.rapid_override_pct   = rapid_ovr   // 10
+                _state.spindle_override_pct = spindle_ovr // 10
+                _state.velocity_mpm = velocity_mpm
+                _state.vacuum_pump_on = vacuum_on
+                _state.aspiration_on  = aspiration_on
 
         except Exception as exc:  # noqa: BLE001
             with _state_lock:
@@ -426,6 +562,7 @@ def _state_snapshot() -> dict:
     )
     # Flag when connected but all key metrics are zero (likely wrong unit ID /
     # wrong register addresses, or machine genuinely idle with no motion).
+    # Include confirmed-live registers in the validity check.
     snap["data_looks_valid"] = not snap["connected"] or any([
         snap["status_word"],
         snap["x_pos"],
@@ -434,6 +571,10 @@ def _state_snapshot() -> dict:
         snap["spindle_rpm"],
         snap["feed_rate"],
         snap["pkt_counter"],
+        snap["cnc_mode_word"],       # R6201 – confirmed live
+        snap["cnc_status_word"],     # R6100 – confirmed live
+        snap["vacuum_pump_on"],      # Coil 5 – confirmed live
+        snap["aspiration_on"],       # Coil 10 – confirmed live
     ])
     return snap
 
