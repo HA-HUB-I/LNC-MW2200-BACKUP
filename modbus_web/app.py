@@ -104,14 +104,11 @@ _NC_EXTENSIONS = {".nc", ".cnc", ".tap", ".prg", ".txt", ".gcode"}
 
 # Holding register start addresses (0-based)
 REG_STATUS = 0
-REG_X_LO = 1      # 32-bit position split across two 16-bit registers
-REG_X_HI = 2
-REG_Y_LO = 3
-REG_Y_HI = 4
-REG_Z_LO = 5
-REG_Z_HI = 6
-REG_SPINDLE = 7
-REG_FEED = 8
+REG_X_LO = 11565      # Discovered: Live X (16-bit)
+REG_Y_LO = 11570      # Discovered: Live Y (16-bit)
+REG_Z_LO = 11575      # Discovered: Live Z (16-bit)
+REG_SPINDLE = 1007    # Confirmed: Spindle RPM (R1007)
+REG_FEED = 1004       # Confirmed: Axis Velocity (R1004)
 REG_ALARM = 9
 REG_PROGRAM = 10
 REG_LOT_COUNT = 11
@@ -360,6 +357,11 @@ class MachineState:
         self.cnc_mode = ""
 
 
+def _regs_to_int16(val: int) -> int:
+    """Interpret a 16-bit register as a signed integer."""
+    return struct.unpack(">h", struct.pack(">H", val & 0xFFFF))[0]
+
+
 _state = MachineState()
 _state_lock = threading.Lock()
 
@@ -408,197 +410,71 @@ class ModbusPoller(threading.Thread):
     def _poll(self) -> None:
         assert self._client is not None
         try:
-            # Read the main register block (14 registers: 0–13)
-            rr = self._client.read_holding_registers(
-                address=REG_STATUS, count=14, device_id=MODBUS_UNIT
-            )
-            if rr.isError():
-                raise ModbusException(f"Register read error: {rr}")
+            # We'll read several blocks to cover all discovered "live" registers
+            # 1. Main block (0-13)
+            rr_main = self._client.read_holding_registers(address=0, count=14, device_id=MODBUS_UNIT)
+            main_regs = rr_main.registers if not rr_main.isError() else [0]*14
 
-            regs = rr.registers
+            # 2. Speeds & Velocity (1000-1010)
+            rr_speeds = self._client.read_holding_registers(address=1000, count=11, device_id=MODBUS_UNIT)
+            speed_regs = rr_speeds.registers if not rr_speeds.isError() else [0]*11
 
-            # Read diagnostic register block (5000–5008, 9 registers)
-            rr_diag = self._client.read_holding_registers(
-                address=REG_CONN_STATUS, count=_DIAG_REG_COUNT, device_id=MODBUS_UNIT
-            )
-            if rr_diag.isError():
-                diag = [0] * _DIAG_REG_COUNT
-            else:
-                diag = rr_diag.registers
+            # 3. Live Coordinates (11565-11576)
+            rr_coords = self._client.read_holding_registers(address=11565, count=12, device_id=MODBUS_UNIT)
+            coord_regs = rr_coords.registers if not rr_coords.isError() else [0]*12
 
-            # Read stopper status register R20204 (PLC→HMI, 32-bit = 2×16-bit lo/hi)
-            stopper_word = 0
-            rr_stopper = self._client.read_holding_registers(
-                address=REG_STOPPER_STS_LO, count=2, device_id=MODBUS_UNIT
-            )
-            if not rr_stopper.isError():
-                lo = rr_stopper.registers[0]
-                hi = rr_stopper.registers[1]
-                stopper_word = (hi << 16) | (lo & 0xFFFF)
+            # 4. Status & Overrides (6100-6202)
+            rr_mode = self._client.read_holding_registers(address=6100, count=102, device_id=MODBUS_UNIT)
+            mode_regs = rr_mode.registers if not rr_mode.isError() else [0]*102
+            
+            # 5. Overrides & G-Code (8060-8110)
+            rr_sys = self._client.read_holding_registers(address=8060, count=50, device_id=MODBUS_UNIT)
+            sys_regs = rr_sys.registers if not rr_sys.isError() else [0]*50
 
-            # Read G-code current line number (R8102) – best-effort, not all firmware versions support this
-            gcode_line = 0
-            try:
-                rr_gcode = self._client.read_holding_registers(
-                    address=REG_GCODE_LINE, count=1, device_id=MODBUS_UNIT
-                )
-                if not rr_gcode.isError():
-                    gcode_line = rr_gcode.registers[0]
-            except Exception:  # noqa: BLE001
-                pass
+            # 6. Diagnostic (5000-5009)
+            rr_diag = self._client.read_holding_registers(address=5000, count=10, device_id=MODBUS_UNIT)
+            diag_regs = rr_diag.registers if not rr_diag.isError() else [0]*10
 
-            # Read absolute machine coordinates (R10000–R10005, 3 axes × 32-bit) – best-effort
-            abs_x = abs_y = abs_z = 0.0
-            try:
-                rr_abs = self._client.read_holding_registers(
-                    address=REG_ABS_X_LO, count=6, device_id=MODBUS_UNIT
-                )
-                if not rr_abs.isError():
-                    abs_x = _regs_to_int32(rr_abs.registers[0], rr_abs.registers[1]) / 1000.0
-                    abs_y = _regs_to_int32(rr_abs.registers[2], rr_abs.registers[3]) / 1000.0
-                    abs_z = _regs_to_int32(rr_abs.registers[4], rr_abs.registers[5]) / 1000.0
-            except Exception:  # noqa: BLE001
-                pass
+            # 7. Coils
+            rr_coils = self._client.read_coils(address=0, count=40, device_id=MODBUS_UNIT)
+            coils = rr_coils.bits if not rr_coils.isError() else [False]*40
 
-            # ── Live CNC-PLC registers (confirmed via debug session) ─────────
-            # R6201 – active machine mode (one-hot bits; JOG/MEM/MDI/ZRN/MPG…)
-            cnc_mode_word = 0
-            try:
-                rr_mode = self._client.read_holding_registers(
-                    address=REG_CNC_MODE_WORD, count=1, device_id=MODBUS_UNIT
-                )
-                if not rr_mode.isError():
-                    cnc_mode_word = rr_mode.registers[0]
-            except Exception:  # noqa: BLE001
-                pass
-
-            # R6100 – detailed mode/lamp status word
-            cnc_status_word = 0
-            try:
-                rr_sts = self._client.read_holding_registers(
-                    address=REG_CNC_STATUS_WORD, count=1, device_id=MODBUS_UNIT
-                )
-                if not rr_sts.isError():
-                    cnc_status_word = rr_sts.registers[0]
-            except Exception:  # noqa: BLE001
-                pass
-
-            # R8067–R8069 – override percentages (×10; 1000 = 100%)
-            feed_ovr = rapid_ovr = spindle_ovr = 1000
-            try:
-                rr_ovr = self._client.read_holding_registers(
-                    address=REG_FEED_OVERRIDE, count=3, device_id=MODBUS_UNIT
-                )
-                if not rr_ovr.isError() and len(rr_ovr.registers) >= 3:
-                    feed_ovr    = rr_ovr.registers[0]
-                    rapid_ovr   = rr_ovr.registers[1]
-                    spindle_ovr = rr_ovr.registers[2]
-            except Exception:  # noqa: BLE001
-                pass
-
-            # R1004 – instantaneous axis velocity (mm/min; 0 when stopped)
-            velocity_mpm = 0
-            try:
-                rr_vel = self._client.read_holding_registers(
-                    address=REG_VELOCITY, count=1, device_id=MODBUS_UNIT
-                )
-                if not rr_vel.isError():
-                    velocity_mpm = rr_vel.registers[0]
-            except Exception:  # noqa: BLE001
-                pass
-
-            # R1007 – live spindle RPM (confirmed 18000 during spindle operation)
-            live_spindle_rpm = 0
-            try:
-                rr_spdl = self._client.read_holding_registers(
-                    address=REG_SPINDLE_RPM, count=1, device_id=MODBUS_UNIT
-                )
-                if not rr_spdl.isError():
-                    live_spindle_rpm = rr_spdl.registers[0]
-            except Exception:  # noqa: BLE001
-                pass
-
-            # R9000 – active tool number (best-effort; address unverified on this machine)
-            tool_number = 0
-            try:
-                rr_tool = self._client.read_holding_registers(
-                    address=REG_TOOL_NUMBER, count=1, device_id=MODBUS_UNIT
-                )
-                if not rr_tool.isError():
-                    tool_number = rr_tool.registers[0]
-            except Exception:  # noqa: BLE001
-                pass
-
-            # FC01 – read coil states (0–40 covers all confirmed coils: spindle 7+8, vacuum 12, stoppers 14–19, dust cover 35+36)
-            vacuum_on = forward_pos_on = left_pos_on = dust_cover_on = spindle_on = False
-            try:
-                rr_coils = self._client.read_coils(
-                    address=0, count=41, device_id=MODBUS_UNIT
-                )
-                if not rr_coils.isError() and len(rr_coils.bits) >= 41:
-                    spindle_on     = bool(rr_coils.bits[COIL_SPINDLE_A]) or bool(rr_coils.bits[COIL_SPINDLE_B])
-                    vacuum_on      = bool(rr_coils.bits[COIL_VACUUM])
-                    forward_pos_on = bool(rr_coils.bits[COIL_FORWARD_POS_A]) or bool(rr_coils.bits[COIL_FORWARD_POS_B])
-                    left_pos_on    = bool(rr_coils.bits[COIL_LEFT_POS_A])    or bool(rr_coils.bits[COIL_LEFT_POS_B])
-                    dust_cover_on  = bool(rr_coils.bits[COIL_DUST_COVER_A])  or bool(rr_coils.bits[COIL_DUST_COVER_B])
-            except Exception:  # noqa: BLE001
-                pass
-
-            # Cycle-time tracking (computed from the cycle_running status bit)
             now = time.time()
-            cycle_running_now = bool(regs[REG_STATUS] & (1 << 2))
-            if cycle_running_now and not self._cycle_was_running:
-                self._cycle_start = now
-            elif not cycle_running_now and self._cycle_was_running:
-                if self._cycle_start is not None:
-                    self._total_cycle_s += now - self._cycle_start
-                    self._cycle_start = None
-            self._cycle_was_running = cycle_running_now
-
-            current_cycle_s = (now - self._cycle_start) if self._cycle_start is not None else 0.0
-
             with _state_lock:
                 _state.connected = True
                 _state.last_error = ""
-                _state.status_word = regs[REG_STATUS]
-                _state.x_pos = _regs_to_int32(regs[REG_X_LO], regs[REG_X_HI]) / 1000.0
-                _state.y_pos = _regs_to_int32(regs[REG_Y_LO], regs[REG_Y_HI]) / 1000.0
-                _state.z_pos = _regs_to_int32(regs[REG_Z_LO], regs[REG_Z_HI]) / 1000.0
-                _state.spindle_rpm = live_spindle_rpm   # R1007 – confirmed live
-                _state.feed_rate = regs[REG_FEED]
-                _state.alarm_code = regs[REG_ALARM]
-                _state.program_number = regs[REG_PROGRAM]
-                _state.lot_count = regs[REG_LOT_COUNT]
-                _state.lot_target = regs[REG_LOT_TARGET]
-                _state.lot_id = regs[REG_LOT_ID]
-                _state.conn_status   = diag[REG_CONN_STATUS   - REG_CONN_STATUS]
-                _state.idle_time_s   = diag[REG_IDLE_TIME      - REG_CONN_STATUS]
-                _state.pkt_counter   = diag[REG_PKT_COUNTER    - REG_CONN_STATUS]
-                _state.pkt_exception = diag[REG_PKG_EXCEPTION  - REG_CONN_STATUS]
-                _state.current_cycle_time_s = current_cycle_s
-                _state.total_cycle_time_s   = self._total_cycle_s + current_cycle_s
-                _state.last_update = now
-                _state.decode_status_word()
-                _state.forward_pos = bool(stopper_word & (1 << BIT_FORWARD_POS))
-                _state.left_pos    = bool(stopper_word & (1 << BIT_LEFT_POS))
-                _state.gcode_line  = gcode_line
-                _state.abs_x_pos   = abs_x
-                _state.abs_y_pos   = abs_y
-                _state.abs_z_pos   = abs_z
-                # Live CNC-PLC data
-                _state.cnc_mode_word    = cnc_mode_word
-                _state.cnc_status_word  = cnc_status_word
+                _state.status_word = main_regs[0]
+                
+                # Coordinates (16-bit discovered)
+                _state.x_pos = _regs_to_int16(coord_regs[0]) / 1000.0  # R11565
+                _state.y_pos = _regs_to_int16(coord_regs[5]) / 1000.0  # R11570
+                _state.z_pos = _regs_to_int16(coord_regs[10]) / 1000.0 # R11575
+                
+                # Speeds
+                _state.spindle_rpm = speed_regs[7] # R1007
+                _state.velocity_mpm = speed_regs[4] # R1004
+                _state.feed_rate = _state.velocity_mpm if _state.velocity_mpm > 0 else main_regs[8]
+                
+                # G-Code & Progress
+                _state.gcode_line = sys_regs[102-60] if len(sys_regs) > 42 else 0 # R8102
+                _state.program_number = main_regs[10]
+                
+                # Overrides (R8067+)
+                _state.feed_override_pct = sys_regs[7] // 10 if len(sys_regs) > 7 else 100
+                
+                # Diagnostics
+                _state.pkt_counter = diag_regs[2]
+                
+                # Mode
+                _state.cnc_mode_word = mode_regs[101] # R6201
                 _state.decode_cnc_mode()
-                _state.feed_override_pct    = feed_ovr    // 10
-                _state.rapid_override_pct   = rapid_ovr   // 10
-                _state.spindle_override_pct = spindle_ovr // 10
-                _state.velocity_mpm = velocity_mpm
-                _state.vacuum_on      = vacuum_on
-                _state.forward_pos_on = forward_pos_on
-                _state.left_pos_on    = left_pos_on
-                _state.dust_cover_on  = dust_cover_on
-                _state.spindle_on     = spindle_on
-                _state.tool_number    = tool_number
+                _state.decode_status_word()
+                
+                # Indicators
+                _state.vacuum_on = coils[12]
+                _state.spindle_on = coils[7] or coils[8] or coils[3]
+                
+                _state.last_update = now
 
         except Exception as exc:  # noqa: BLE001
             with _state_lock:
