@@ -21,23 +21,23 @@ class ModbusWorker(threading.Thread):
 
     def _poll(self):
         try:
-            # 1. Main Block (0-13)
+            # 1. Основен блок (0-13)
             r_main = self.client.read_holding_registers(address=0, count=14, device_id=MODBUS_UNIT)
             main = r_main.registers if not r_main.isError() else [0]*14
 
-            # 2. Speeds (1000-1010)
+            # 2. Обороти (1000-1010)
             r_speed = self.client.read_holding_registers(address=1000, count=11, device_id=MODBUS_UNIT)
             speed = r_speed.registers if not r_speed.isError() else [0]*11
 
-            # 3. Live Block (11560 - 11650) - Разширен за Z и Velocity
-            r_coord = self.client.read_holding_registers(address=11560, count=90, device_id=MODBUS_UNIT)
-            coord = r_coord.registers if not r_coord.isError() else [0]*90
+            # 3. Координатен блок (11560-11650)
+            r_coord = self.client.read_holding_registers(address=R_COORDS_BLOCK, count=R_COORD_COUNT, device_id=MODBUS_UNIT)
+            coord = r_coord.registers if not r_coord.isError() else [0]*R_COORD_COUNT
 
-            # 4. Absolute Block (12000-12050)
-            r_abs = self.client.read_holding_registers(address=12000, count=50, device_id=MODBUS_UNIT)
-            abs_regs = r_abs.registers if not r_abs.isError() else [0]*50
+            # 4. Абсолютен блок (12000-12050)
+            r_abs = self.client.read_holding_registers(address=R_ABS_BLOCK, count=R_ABS_COUNT, device_id=MODBUS_UNIT)
+            abs_regs = r_abs.registers if not r_abs.isError() else [0]*R_ABS_COUNT
 
-            # 5. Modes (6100-6202)
+            # 5. Режими (6100-6202)
             r_mode = self.client.read_holding_registers(address=6100, count=102, device_id=MODBUS_UNIT)
             mode_regs = r_mode.registers if not r_mode.isError() else [0]*102
             
@@ -66,15 +66,15 @@ class ModbusWorker(threading.Thread):
                 # --- МАШИННИ КООРДИНАТИ (Machine / Relative) ---
                 s.x_pos = _regs_to_int16(coord[10]) / 1000.0   # R11570
                 s.y_pos = _regs_to_int16(coord[5]) / 1000.0    # R11565
-                s.z_pos = _regs_to_int16(coord[0]) / 1000.0    # R11560 (0.000)
+                s.z_pos = _regs_to_int16(coord[0]) / 1000.0    # R11560
 
-                # --- АБСОЛЮТНИ КООРДИНАТИ (Absolute / G54) ---
-                s.abs_z_pos = _regs_to_int16(abs_regs[34]) / 1000.0 # R12034 (-13.023)
-                s.abs_x_pos = s.x_pos 
-                s.abs_y_pos = s.y_pos
+                # --- АБСОЛЮТНИ КООРДИНАТИ (Absolute / Work G54) ---
+                s.abs_x_pos = _regs_to_int16(abs_regs[32]) / 1000.0 # R12032 ✅
+                s.abs_y_pos = _regs_to_int16(abs_regs[38]) / 1000.0 # R12038 ✅
+                s.abs_z_pos = _regs_to_int16(abs_regs[34]) / 1000.0 # R12034 ✅
 
                 s.spindle_rpm = speed[7]
-                s.feed_rate = coord[78] # R11638 (Индекс 78 от 11560)
+                s.feed_rate = coord[78] # R11638
 
                 s.cnc_mode_word = mode_regs[101]
                 s.decode_cnc_mode()
