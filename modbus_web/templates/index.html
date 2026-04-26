@@ -4,143 +4,60 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
   <meta name="theme-color" content="#0f1117" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.json" />
-  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2083/2083161.png" />
-  <title>LNC Dash</title>
+  <title>LNC Machine</title>
   <style>
     :root {
-      --bg: #0f1117;
-      --card: #1a1d27;
-      --border: #2a2d3e;
-      --text: #e2e8f0;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --green: #22c55e;
-      --yellow: #facc15;
-      --red: #ef4444;
-      --orange: #f97316;
-      --radius: 12px;
+      --bg: #0f1117; --card: #1a1d27; --border: #2a2d3e; --text: #e2e8f0;
+      --muted: #94a3b8; --accent: #38bdf8; --green: #22c55e; --orange: #f97316; --red: #ef4444;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      line-height: 1.4;
-      padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    header {
-      background: var(--card);
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-    header h1 { font-size: 1.1rem; font-weight: 800; color: var(--accent); }
-
-    .status-badge {
-      font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 20px;
-      border: 1px solid var(--border); display: flex; align-items: center; gap: 0.3rem;
-    }
-    .status-badge.connected { border-color: var(--green); color: var(--green); }
-    .status-badge.error { border-color: var(--red); color: var(--red); }
-    .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-
-    /* ── Operating Modes ── */
-    .modes-row { display: flex; gap: 0.4rem; overflow-x: auto; padding-bottom: 0.2rem; scrollbar-width: none; }
-    .modes-row::-webkit-scrollbar { display: none; }
-    .mode-tag {
-      padding: 0.25rem 0.6rem; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
-      background: #232936; color: var(--muted); border: 1px solid var(--border); white-space: nowrap;
-    }
+    body { background: var(--bg); color: var(--text); font-family: sans-serif; line-height: 1.4; }
+    
+    header { background: var(--card); padding: 1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; }
+    
+    .modes-row { display: flex; gap: 0.4rem; overflow-x: auto; margin-top: 0.75rem; padding-bottom: 0.2rem; }
+    .mode-tag { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.6rem; font-weight: 800; background: #232936; color: var(--muted); border: 1px solid var(--border); }
     .mode-tag.active { background: rgba(56, 189, 248, 0.2); color: var(--accent); border-color: var(--accent); }
 
-    /* ── Warnings ── */
-    #warning-bar {
-      display: none; flex-direction: column; gap: 0.4rem; padding: 0 1rem; margin-top: 1rem;
-    }
-    .warning-item {
-      padding: 0.6rem 1rem; border-radius: 8px; font-weight: 800; font-size: 0.8rem;
-      display: flex; align-items: center; gap: 0.5rem; animation: pulse 1.5s infinite;
-    }
+    #warning-bar { display: none; flex-direction: column; gap: 0.4rem; padding: 1rem 1rem 0 1rem; }
+    .warning-item { padding: 0.5rem; border-radius: 6px; font-weight: 800; font-size: 0.75rem; text-align: center; }
     .warning-item.red { background: rgba(239, 68, 68, 0.2); color: var(--red); border: 1px solid var(--red); }
     .warning-item.orange { background: rgba(249, 115, 22, 0.2); color: var(--orange); border: 1px solid var(--orange); }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
 
-    .container {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1rem; padding: 1rem; max-width: 1400px; margin: 0 auto;
-    }
+    .container { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; padding: 1rem; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
+    .card h2 { font-size: 0.7rem; text-transform: uppercase; color: var(--muted); margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
 
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
-    .card h2 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 1rem; }
+    .unit-toggle { background: var(--bg); border: 1px solid var(--border); color: var(--accent); padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 800; font-size: 0.7rem; cursor: pointer; }
 
-    /* ── Axis ── */
-    .axis-row {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0.5rem 0.75rem; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 0.4rem;
-    }
-    .axis-label { font-size: 1.1rem; font-weight: 900; color: var(--accent); width: 1.5rem; }
-    .axis-val { font-size: 1.5rem; font-weight: 700; font-family: monospace; }
-    .axis-abs { font-size: 0.6rem; color: var(--muted); text-align: right; }
+    .axis-row { display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.75rem; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 0.3rem; }
+    .axis-label { font-size: 1rem; font-weight: 900; color: var(--accent); }
+    .axis-val { font-size: 1.4rem; font-weight: 700; font-family: monospace; }
+    .axis-abs { font-size: 0.6rem; color: var(--muted); text-align: right; margin-top: -2px; margin-bottom: 5px; padding-right: 0.5rem; }
 
-    /* ── Gauges ── */
-    .gauge { margin-bottom: 0.8rem; }
-    .gauge-info { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.2rem; }
-    .gauge-bar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
-    .gauge-fill { height: 100%; width: 0%; transition: width 0.3s; }
+    .state-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; }
+    .state-item { padding: 0.4rem 0.1rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 0.55rem; font-weight: 800; text-align: center; color: var(--muted); }
+    .state-item.active { background: rgba(34, 197, 94, 0.2); color: var(--green); border-color: var(--green); }
+    .state-item.active-red { background: rgba(239, 68, 68, 0.2); color: var(--red); border-color: var(--red); }
 
-    /* ── Flags ── */
-    .state-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.4rem; }
-    .state-item {
-      padding: 0.4rem 0.2rem; background: var(--bg); border: 1px solid var(--border);
-      border-radius: 6px; font-size: 0.6rem; font-weight: 800; text-align: center; color: var(--muted);
-    }
-    .state-item.active { background: rgba(34, 197, 94, 0.15); color: var(--green); border-color: var(--green); }
-    .state-item.active-red { background: rgba(239, 68, 68, 0.15); color: var(--red); border-color: var(--red); }
-    .state-item.active-warn { background: rgba(250, 204, 21, 0.15); color: var(--yellow); border-color: var(--yellow); }
-
-    /* ── Controls ── */
-    .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
-    .btn {
-      padding: 0.8rem; border: 1px solid var(--border); border-radius: 8px;
-      background: #232936; color: white; font-weight: 700; cursor: pointer;
-      display: flex; flex-direction: column; align-items: center; font-size: 0.8rem;
-    }
+    .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .btn { padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border); background: #232936; color: white; font-weight: 700; font-size: 0.75rem; cursor: pointer; }
     .btn.green { border-color: var(--green); color: var(--green); }
     .btn.red { border-color: var(--red); color: var(--red); }
     .btn.full { grid-column: span 2; }
 
-    .table-scroll { max-height: 180px; overflow-y: auto; margin-top: 0.5rem; background: var(--bg); border-radius: 6px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.65rem; }
-    td { padding: 0.4rem; border-bottom: 1px solid var(--border); }
-    .val { font-family: monospace; color: var(--accent); font-weight: 700; text-align: right; }
-
-    #toast {
-      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(100px);
-      background: var(--accent); color: var(--bg); padding: 0.6rem 1.25rem; border-radius: 20px;
-      font-weight: 800; font-size: 0.8rem; z-index: 1000; transition: transform 0.3s;
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
+    .gauge-bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .gauge-fill { height: 100%; width: 0%; transition: width 0.3s; }
   </style>
 </head>
 <body>
 
 <header>
   <div class="header-top">
-    <h1>LNC MW2200A</h1>
-    <div id="conn-status" class="status-badge connected"><span class="dot"></span><span id="conn-text">ОНЛАЙН</span></div>
+    <h1 style="font-size: 1rem;">LNC MW2200A</h1>
+    <div id="conn-status" style="font-size: 0.6rem; font-weight: 800; color: var(--green);">● ОНЛАЙН</div>
   </div>
   <div class="modes-row">
     <span class="mode-tag" id="m-MEM">AUTO</span>
@@ -156,9 +73,8 @@
 
 <main class="container">
   
-  <!-- Axis -->
   <div class="card">
-    <h2>ПОЗИЦИЯ</h2>
+    <h2>ПОЗИЦИЯ <button class="unit-toggle" onclick="toggleUnits()" id="unit-btn">MM</button></h2>
     <div class="axis-row"><span class="axis-label">X</span><span class="axis-val" id="val-x">0.000</span></div>
     <div class="axis-abs" id="val-abs-x">Abs: 0.000</div>
     <div class="axis-row"><span class="axis-label">Y</span><span class="axis-val" id="val-y">0.000</span></div>
@@ -167,215 +83,132 @@
     <div class="axis-abs" id="val-abs-z">Abs: 0.000</div>
   </div>
 
-  <!-- Status Flags -->
   <div class="card">
-    <h2>МАШИНЕН СТАТУС</h2>
+    <h2>СТАТУС</h2>
     <div class="state-grid">
       <div class="state-item" id="fl-cycle">CYCLE</div>
       <div class="state-item" id="fl-spindle">SPINDLE</div>
       <div class="state-item" id="fl-hold">HOLD</div>
       <div class="state-item" id="fl-alarm">ALARM</div>
       <div class="state-item" id="fl-estop">E-STOP</div>
-      <div class="state-item" id="fl-door">DOOR</div>
       <div class="state-item" id="fl-vacuum">VACUUM</div>
-      <div class="state-item" id="fl-dust">DUST</div>
       <div class="state-item" id="fl-fwd">FORWARD</div>
-      <div class="state-item" id="fl-left">LEFT POS</div>
-      <div class="state-item" id="fl-right">RIGHT POS</div>
-      <div class="state-item" id="fl-home">HOME OK</div>
+      <div class="state-item" id="fl-left">LEFT</div>
+      <div class="state-item" id="fl-right">RIGHT</div>
     </div>
-    <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.5rem; display: flex; justify-content: space-between;">
-      <div><small>ЦИКЪЛ</small><div id="val-cycle" style="font-weight:700; color:var(--accent)">00:00:00</div></div>
-      <div style="text-align:right"><small>ОБЩО</small><div id="val-total" style="font-weight:700">00:00:00</div></div>
+    <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; font-size: 0.7rem;">
+      <span>ЦИКЪЛ: <b id="val-cycle" style="color:var(--accent)">00:00:00</b></span>
+      <span>ОБЩО: <b id="val-total">00:00:00</b></span>
     </div>
   </div>
 
-  <!-- Gauges -->
   <div class="card">
-    <h2>СКОРОСТИ & OVERRIDE</h2>
-    <div class="gauge">
-      <div class="gauge-info"><span>Шпиндел</span><span><b id="val-spindle">0</b> RPM</span></div>
+    <h2>СКОРОСТ</h2>
+    <div style="margin-bottom: 0.5rem;">
+      <div style="display:flex; justify-content:space-between; font-size:0.7rem;"><span>Шпиндел</span><span><b id="val-spindle">0</b> RPM</span></div>
       <div class="gauge-bar"><div id="bar-spindle" class="gauge-fill" style="background:var(--orange)"></div></div>
     </div>
-    <div class="gauge">
-      <div class="gauge-info"><span>Подаване</span><span><b id="val-feed">0</b> mm/m</span></div>
+    <div>
+      <div style="display:flex; justify-content:space-between; font-size:0.7rem;"><span>Подаване</span><span><b id="val-feed">0</b> mm/m</span></div>
       <div class="gauge-bar"><div id="bar-feed" class="gauge-fill" style="background:var(--green)"></div></div>
-    </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem; font-size:0.7rem; font-weight:800">
-      <div id="fl-ovr-f" style="color:var(--green)">FEED: 100%</div>
-      <div id="fl-ovr-s" style="color:var(--orange)">SPDL: 100%</div>
     </div>
   </div>
 
-  <!-- Controls -->
   <div class="card">
     <h2>УПРАВЛЕНИЕ</h2>
     <div class="btn-grid">
-      <button class="btn green" onclick="sendCommand('cycle_start')">▶ START</button>
-      <button class="btn" onclick="sendCommand('feed_hold')">⏸ HOLD</button>
-      <button class="btn" onclick="sendCommand('reset')">↺ RESET</button>
-      <button class="btn red" onclick="confirmEstop()">🛑 STOP</button>
-      <button class="btn green full" onclick="sendMcode('vacuum_on')">💧 VACUUM ON (M10)</button>
-      <button class="btn red full" onclick="sendMcode('vacuum_off')">💧 VACUUM OFF (M11)</button>
-    </div>
-  </div>
-
-  <!-- Diagnostics -->
-  <div class="card">
-    <h2>ДИАГНОСТИКА <button onclick="runScan()" style="background:none; border:none; color:var(--accent); font-weight:800; cursor:pointer">SCAN</button></h2>
-    <div class="table-scroll">
-      <table id="scan-table">
-        <thead><tr><th>Адрес</th><th>Инфо</th><th style="text-align:right">Стойност</th></tr></thead>
-        <tbody>
-           <tr><td>R10032</td><td>Modal State</td><td class="val" id="d-r10032">0</td></tr>
-           <tr><td>R10034</td><td>Action State</td><td class="val" id="d-r10034">0</td></tr>
-           <tr><td>G-Line</td><td>Текущ ред</td><td class="val" id="val-gline">0</td></tr>
-           <tr><td>Prog</td><td>Програма #</td><td class="val" id="val-prog">0</td></tr>
-        </tbody>
-      </table>
+      <button class="btn green" onclick="sendCommand('cycle_start')">START</button>
+      <button class="btn" onclick="sendCommand('feed_hold')">HOLD</button>
+      <button class="btn" onclick="sendCommand('reset')">RESET</button>
+      <button class="btn red" onclick="if(confirm('STOP?'))sendCommand('estop')">STOP</button>
+      <button class="btn green full" onclick="sendMcode('vacuum_on')">VACUUM ON</button>
+      <button class="btn red full" onclick="sendMcode('vacuum_off')">VACUUM OFF</button>
     </div>
   </div>
 
 </main>
 
-<div id="toast"></div>
-
 <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+  let currentUnit = 'mm';
+  function toggleUnits() {
+    currentUnit = currentUnit === 'mm' ? 'cm' : 'mm';
+    document.getElementById('unit-btn').textContent = currentUnit.toUpperCase();
+    updateUI(); 
   }
 
-  function fmtSeconds(s) {
-    if (!s || s < 0) return "00:00:00";
-    s = Math.floor(s);
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const sec = s % 60;
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  let lastData = null;
+
+  function formatPos(val) {
+    if (currentUnit === 'cm') return (val / 10).toFixed(4);
+    return val.toFixed(3);
   }
 
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
+  function fmtTime(s) {
+    if(!s) return "00:00:00";
+    const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=Math.floor(s%60);
+    return `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`;
+  }
+
+  function updateUI() {
+    if (!lastData) return;
+    const d = lastData;
+    
+    document.getElementById('val-x').textContent = formatPos(d.x_pos);
+    document.getElementById('val-y').textContent = formatPos(d.y_pos);
+    document.getElementById('val-z').textContent = formatPos(d.z_pos);
+    document.getElementById('val-abs-x').textContent = "Abs: " + formatPos(d.abs_x_pos);
+    document.getElementById('val-abs-y').textContent = "Abs: " + formatPos(d.abs_y_pos);
+    document.getElementById('val-abs-z').textContent = "Abs: " + formatPos(d.abs_z_pos);
+    
+    document.getElementById('val-spindle').textContent = d.spindle_rpm;
+    document.getElementById('bar-spindle').style.width = Math.min(100, (d.spindle_rpm/24000)*100) + "%";
+    document.getElementById('val-feed').textContent = d.feed_rate;
+    document.getElementById('bar-feed').style.width = Math.min(100, (d.feed_rate/10000)*100) + "%";
+
+    const setFl = (id, act, cls='active') => {
+      const el = document.getElementById(id);
+      if(el) act ? el.classList.add(cls) : el.classList.remove(cls);
+    };
+    setFl('fl-cycle', d.cycle_running);
+    setFl('fl-spindle', d.spindle_on);
+    setFl('fl-alarm', d.alarm_active, 'active-red');
+    setFl('fl-estop', d.estop_active, 'active-red');
+    setFl('fl-vacuum', d.vacuum_on);
+    setFl('fl-fwd', d.forward_pos_on);
+    setFl('fl-left', d.left_pos_on);
+    setFl('fl-right', d.right_pos_on);
+
+    const MODES = ['MEM','MDI','JOG','INCJOG','MPG','ZRN'];
+    MODES.forEach(m => document.getElementById('m-'+m).className = 'mode-tag' + (d.cnc_mode===m?' active':''));
+
+    document.getElementById('val-cycle').textContent = fmtTime(d.current_cycle_time_s);
+    document.getElementById('val-total').textContent = fmtTime(d.total_cycle_time_s);
+
+    const wb = document.getElementById('warning-bar');
+    let w = [];
+    if(d.spindle_on) w.push('<div class="warning-item orange">ШПИНДЕЛЪТ РАБОТИ!</div>');
+    if(d.forward_pos_on || d.left_pos_on || d.right_pos_on) w.push('<div class="warning-item red">СТОПЕРИТЕ СА АКТИВНИ!</div>');
+    if(w.length){ wb.style.display='flex'; wb.innerHTML=w.join(''); } else { wb.style.display='none'; }
   }
 
   async function fetchStatus() {
     try {
-      const res = await fetch('/api/status');
-      const d = await res.json();
-      
-      // Connection
-      const badge = document.getElementById('conn-status');
-      badge.className = d.connected ? 'status-badge connected' : 'status-badge error';
-      document.getElementById('conn-text').textContent = d.connected ? 'ОНЛАЙН' : 'ГРЕШКА';
-
-      // Modes
-      const MODES = ['MEM','MDI','JOG','INCJOG','MPG','ZRN'];
-      MODES.forEach(m => {
-        const el = document.getElementById('m-' + m);
-        if (el) el.className = 'mode-tag' + (d.cnc_mode === m ? ' active' : '');
-      });
-
-      // Axis
-      document.getElementById('val-x').textContent = d.x_pos.toFixed(3);
-      document.getElementById('val-y').textContent = d.y_pos.toFixed(3);
-      document.getElementById('val-z').textContent = d.z_pos.toFixed(3);
-      document.getElementById('val-abs-x').textContent = "Abs: " + d.abs_x_pos.toFixed(3);
-      document.getElementById('val-abs-y').textContent = "Abs: " + d.abs_y_pos.toFixed(3);
-      document.getElementById('val-abs-z').textContent = "Abs: " + d.abs_z_pos.toFixed(3);
-      
-      // Gauges
-      document.getElementById('val-spindle').textContent = d.spindle_rpm;
-      document.getElementById('bar-spindle').style.width = Math.min(100, (d.spindle_rpm / 24000) * 100) + "%";
-      document.getElementById('val-feed').textContent = d.feed_rate;
-      document.getElementById('bar-feed').style.width = Math.min(100, (d.feed_rate / 15000) * 100) + "%";
-
-      // Flags
-      const setFlag = (id, active, cls='active') => {
-          const el = document.getElementById(id);
-          if (el) active ? el.classList.add(cls) : el.classList.remove(cls);
-      };
-      setFlag('fl-cycle', d.cycle_running);
-      setFlag('fl-spindle', d.spindle_on || d.spindle_running);
-      setFlag('fl-hold', d.feed_hold_active, 'active-warn');
-      setFlag('fl-alarm', d.alarm_active, 'active-red');
-      setFlag('fl-estop', d.estop_active, 'active-red');
-      setFlag('fl-door', d.door_open, 'active-warn');
-      setFlag('fl-vacuum', d.vacuum_on);
-      setFlag('fl-dust', d.dust_cover_on);
-      setFlag('fl-fwd', d.forward_pos_on);
-      setFlag('fl-left', d.left_pos_on);
-      setFlag('fl-right', d.right_pos_on);
-      setFlag('fl-home', d.homing);
-
-      document.getElementById('fl-ovr-f').textContent = `FEED: ${d.feed_override_pct}%`;
-      document.getElementById('fl-ovr-s').textContent = `SPDL: ${d.spindle_override_pct}%`;
-      document.getElementById('val-cycle').textContent = fmtSeconds(d.current_cycle_time_s);
-      document.getElementById('val-total').textContent = fmtSeconds(d.total_cycle_time_s);
-
-      // Diagnostics
-      if (d.modal_state) {
-          document.getElementById('d-r10032').textContent = d.modal_state.R10032;
-          document.getElementById('d-r10034').textContent = d.modal_state.R10034;
-      }
-      document.getElementById('val-gline').textContent = d.gcode_line;
-      document.getElementById('val-prog').textContent = d.program_number;
-
-      // --- WARNING LOGIC ---
-      const warnBar = document.getElementById('warning-bar');
-      let warns = [];
-      if (d.spindle_on || d.spindle_running) {
-        warns.push('<div class="warning-item orange">⚠️ Шпинделът работи!</div>');
-      }
-      if (d.left_pos_on || d.right_pos_on || d.forward_pos_on) {
-        warns.push('<div class="warning-item red">⚠️ СТОПЕРИТЕ СА АКТИВНИ!</div>');
-      }
-      if (d.alarm_active) {
-        warns.push(`<div class="warning-item red">🚨 АЛАРМА: ${d.alarm_code}</div>`);
-      }
-      
-      if (warns.length > 0) {
-        warnBar.style.display = 'flex';
-        warnBar.innerHTML = warns.join('');
-      } else {
-        warnBar.style.display = 'none';
-      }
-
-    } catch (e) {
-      document.getElementById('conn-status').className = 'status-badge error';
+      const r = await fetch('/api/status');
+      lastData = await r.json();
+      updateUI();
+      document.getElementById('conn-status').textContent = '● ОНЛАЙН';
+      document.getElementById('conn-status').style.color = 'var(--green)';
+    } catch(e) {
+      document.getElementById('conn-status').textContent = '● ОФЛАЙН';
+      document.getElementById('conn-status').style.color = 'var(--red)';
     }
   }
 
-  async function sendCommand(cmd, value=true) {
-    try {
-      await fetch('/api/command', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({command: cmd, value}) });
-      showToast(`OK: ${cmd}`);
-    } catch (e) { showToast("Грешка"); }
-  }
+  async function sendCommand(cmd) { fetch('/api/command', {method:'POST', body:JSON.stringify({command:cmd})}); }
+  async function sendMcode(m) { fetch('/api/mcode', {method:'POST', body:JSON.stringify({mcode:m})}); }
 
-  async function sendMcode(mcode) {
-    try {
-      await fetch('/api/mcode', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({mcode}) });
-      showToast(`M-CODE: ${mcode}`);
-    } catch (e) { showToast("Грешка"); }
-  }
-
-  async function runScan() {
-    showToast("Сканиране...");
-    try {
-      const res = await fetch('/api/scan');
-      const data = await res.json();
-      const tbody = document.querySelector('#scan-table tbody');
-      tbody.innerHTML = data.scans.slice(0, 10).map(s => `<tr><td>${s.address}</td><td><small>${s.description||''}</small></td><td class="val">${s.raw_value}</td></tr>`).join('');
-    } catch (e) { showToast("Грешка"); }
-  }
-
-  function confirmEstop() { if (confirm("СПИРАНЕ?")) sendCommand('estop'); }
-
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js'); }
   setInterval(fetchStatus, 500);
-  fetchStatus();
 </script>
-
 </body>
 </html>
