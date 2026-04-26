@@ -3,16 +3,21 @@ from dataclasses import asdict
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from core.models import MachineState
 from core.modbus_worker import ModbusWorker
+from core.diagnostic_worker import DiagnosticWorker
 from core.config import *
 from core.utils import list_uploaded_files, save_nc_file
 
 app = Flask(__name__)
 
-# Global state and worker
+# Global state and workers
 state = MachineState()
 lock = threading.Lock()
 worker = ModbusWorker(state, lock)
 worker.start()
+
+# Start Diagnostic Logger
+diag_worker = DiagnosticWorker(DIAGNOSTIC_WATCH_LIST)
+diag_worker.start()
 
 @app.route("/")
 def index():

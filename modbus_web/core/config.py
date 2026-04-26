@@ -29,3 +29,11 @@ C_HOLD = 1
 C_RESET = 2
 C_VACUUM = 12
 C_ESTOP = 6
+
+# DIAGNOSTIC WATCH LIST (Real-time logging to CSV)
+DIAGNOSTIC_WATCH_LIST = [
+    12030, 12031, 12032, 12033, 12034, # Absolute Zone Candidates
+    11560, 11565, 11570, 11575,        # Machine Zone
+    1000, 1001, 1007,                  # Speeds
+    32, 33                             # Status Offsets
+]
