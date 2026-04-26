@@ -106,9 +106,9 @@ _NC_EXTENSIONS = {".nc", ".cnc", ".tap", ".prg", ".txt", ".gcode"}
 REG_STATUS = 0
 REG_X_LO = 11565      # Discovered: Live X (16-bit)
 REG_Y_LO = 11570      # Discovered: Live Y (16-bit)
-REG_Z_LO = 11575      # Discovered: Live Z (16-bit)
+REG_Z_LO = 11633      # Discovered: Live Z (16-bit)
 REG_SPINDLE = 1007    # Confirmed: Spindle RPM (R1007)
-REG_FEED = 1004       # Confirmed: Axis Velocity (R1004)
+REG_FEED = 11638       # Discovered: Live Velocity/Feed (11638)
 REG_ALARM = 9
 REG_PROGRAM = 10
 REG_LOT_COUNT = 11
@@ -313,13 +313,13 @@ class MachineState:
     velocity_mpm: int = 0       # mm/min
 
     # Live coil states read back from the controller (FC01 read)
-    # All confirmed via live toggle debug session 2026-03-29
-    vacuum_on:       bool = False   # Coil 12 – vacuum pump
-    forward_pos_on:  bool = False   # Coils {14,18} – front stopper extended
-    left_pos_on:     bool = False   # Coils {15,19} – left stopper extended
-    dust_cover_on:   bool = False   # Coils 35+36 – dust cover open (both ON = open)
-    spindle_on:      bool = False   # Coils 7+8 – spindle motor running (live coils)
-    tool_number:     int  = 0       # Active tool number (R9000 – best-effort, unverified)
+    vacuum_on:       bool = False   # Coil 12
+    forward_pos_on:  bool = False   # Coils 14/18
+    left_pos_on:     bool = False   # Coils 15/19
+    right_pos_on:    bool = False   # Coils 16/20 (Suspected)
+    dust_cover_on:   bool = False   # Coils 35+36
+    spindle_on:      bool = False   # Coils 7+8+3
+    tool_number:     int  = 0
 
     def decode_status_word(self) -> None:
         sw = self.status_word
@@ -419,45 +419,83 @@ class ModbusPoller(threading.Thread):
             rr_speeds = self._client.read_holding_registers(address=1000, count=11, device_id=MODBUS_UNIT)
             speed_regs = rr_speeds.registers if not rr_speeds.isError() else [0]*11
 
-            # 3. Live Coordinates (11565-11576)
-            rr_coords = self._client.read_holding_registers(address=11565, count=12, device_id=MODBUS_UNIT)
-            coord_regs = rr_coords.registers if not rr_coords.isError() else [0]*12
+            # 3. Work Coordinates (Discovered Live 12000-12100)
+            rr_work = self._client.read_holding_registers(address=12000, count=100, device_id=MODBUS_UNIT)
+            work_regs = rr_work.registers if not rr_work.isError() else [0]*100
 
-            # 4. Status & Overrides (6100-6202)
+            # 4. Absolute & Live Coords (11565-11645 range for Z and Velocity)
+            rr_coords = self._client.read_holding_registers(address=11565, count=80, device_id=MODBUS_UNIT)
+            coord_regs = rr_coords.registers if not rr_coords.isError() else [0]*80
+
+            # 5. Absolute Coordinates (Machine Coords 10000-10010)
+            rr_abs = self._client.read_holding_registers(address=10000, count=10, device_id=MODBUS_UNIT)
+            abs_regs = rr_abs.registers if not rr_abs.isError() else [0]*10
+
+            # 6. Status & Overrides (6100-6202)
             rr_mode = self._client.read_holding_registers(address=6100, count=102, device_id=MODBUS_UNIT)
             mode_regs = rr_mode.registers if not rr_mode.isError() else [0]*102
             
-            # 5. Overrides & G-Code (8060-8110)
+            # 7. Overrides & G-Code (8060-8110)
             rr_sys = self._client.read_holding_registers(address=8060, count=50, device_id=MODBUS_UNIT)
             sys_regs = rr_sys.registers if not rr_sys.isError() else [0]*50
 
-            # 6. Diagnostic (5000-5009)
+            # 8. Diagnostic (5000-5009)
             rr_diag = self._client.read_holding_registers(address=5000, count=10, device_id=MODBUS_UNIT)
             diag_regs = rr_diag.registers if not rr_diag.isError() else [0]*10
 
-            # 7. Coils
+            # 9. Coils
             rr_coils = self._client.read_coils(address=0, count=40, device_id=MODBUS_UNIT)
             coils = rr_coils.bits if not rr_coils.isError() else [False]*40
 
+            # 10. Modal State Probe (R10032-10033)
+            rr_modal = self._client.read_holding_registers(address=10032, count=10, device_id=MODBUS_UNIT)
+            modal_regs = rr_modal.registers if not rr_modal.isError() else [0]*10
+
+            # Cycle-time tracking
             now = time.time()
+            cycle_running_now = bool(main_regs[0] & (1 << 2))
+            if cycle_running_now and not self._cycle_was_running:
+                self._cycle_start = now
+            elif not cycle_running_now and self._cycle_was_running:
+                if self._cycle_start is not None:
+                    self._total_cycle_s += now - self._cycle_start
+                    self._cycle_start = None
+            self._cycle_was_running = cycle_running_now
+
+            current_cycle_s = (now - self._cycle_start) if self._cycle_start is not None else 0.0
+
             with _state_lock:
                 _state.connected = True
                 _state.last_error = ""
                 _state.status_word = main_regs[0]
                 
-                # Coordinates (16-bit discovered)
-                _state.x_pos = _regs_to_int16(coord_regs[0]) / 1000.0  # R11565
-                _state.y_pos = _regs_to_int16(coord_regs[5]) / 1000.0  # R11570
-                _state.z_pos = _regs_to_int16(coord_regs[10]) / 1000.0 # R11575
+                # --- WORK COORDINATES (Discovered) ---
+                _state.x_pos = _regs_to_int16(work_regs[65]) / 1000.0   # R12065 = -2.167
+                _state.y_pos = _regs_to_int16(work_regs[38]) / 1000.0   # R12038 = 12.143
+                _state.z_pos = _regs_to_int16(coord_regs[68]) / 1000.0  # R11633 (Live Z)
                 
+                # --- ABSOLUTE COORDINATES ---
+                _state.abs_x_pos = _regs_to_int32(abs_regs[0], abs_regs[1]) / 1000.0 # R10000
+                _state.abs_y_pos = _regs_to_int32(abs_regs[2], abs_regs[3]) / 1000.0 # R10002
+                _state.abs_z_pos = _regs_to_int32(abs_regs[4], abs_regs[5]) / 1000.0 # R10004
+
                 # Speeds
                 _state.spindle_rpm = speed_regs[7] # R1007
-                _state.velocity_mpm = speed_regs[4] # R1004
+                _state.velocity_mpm = coord_regs[73] # R11638 (Live Velocity)
                 _state.feed_rate = _state.velocity_mpm if _state.velocity_mpm > 0 else main_regs[8]
                 
                 # G-Code & Progress
                 _state.gcode_line = sys_regs[102-60] if len(sys_regs) > 42 else 0 # R8102
                 _state.program_number = main_regs[10]
+                
+                # Suspected Tool / Modal State (from live logger)
+                # We'll store these in a new dict for easy monitoring
+                _state.modal_state = {
+                    "R10003": main_regs[3] if len(main_regs) > 3 else 0,
+                    "R10006": main_regs[6] if len(main_regs) > 6 else 0,
+                    "R10032": modal_regs[0],
+                    "R10034": coord_regs[10034-11565] if 0 <= 10034-11565 < len(coord_regs) else 0
+                }
                 
                 # Overrides (R8067+)
                 _state.feed_override_pct = sys_regs[7] // 10 if len(sys_regs) > 7 else 100
@@ -472,6 +510,10 @@ class ModbusPoller(threading.Thread):
                 
                 # Indicators
                 _state.vacuum_on = coils[12]
+                _state.forward_pos_on = coils[14]
+                _state.left_pos_on = coils[15]
+                _state.right_pos_on = coils[16] # Suspected Right Pos
+                _state.dust_cover_on = coils[35] or coils[36]
                 _state.spindle_on = coils[7] or coils[8] or coils[3]
                 
                 _state.last_update = now
@@ -539,6 +581,16 @@ def index():
     return render_template("index.html",
                            modbus_host=MODBUS_HOST,
                            modbus_port=MODBUS_PORT)
+
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_from_directory('static', 'manifest.json')
+
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_from_directory('static', 'sw.js')
 
 
 @app.route("/api/status")
