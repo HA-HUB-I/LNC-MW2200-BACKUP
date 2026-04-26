@@ -77,15 +77,29 @@ function updateUI() {
 async function fetchStatus() {
     try {
         const r = await fetch('/api/status');
-        lastData = await r.json();
+        const d = await r.json();
+        lastData = d;
         updateUI();
-        document.getElementById('conn-status').style.color = 'var(--green)';
+        
+        const statusEl = document.getElementById('conn-status');
+        if (d.connected) {
+            statusEl.textContent = '● ОНЛАЙН';
+            statusEl.style.color = 'var(--green)';
+        } else {
+            statusEl.textContent = '● ГРЕШКА PLC';
+            statusEl.style.color = 'var(--orange)';
+        }
     } catch(e) {
-        document.getElementById('conn-status').style.color = 'var(--red)';
+        const statusEl = document.getElementById('conn-status');
+        statusEl.textContent = '● ОФЛАЙН (SERVER)';
+        statusEl.style.color = 'var(--red)';
     }
 }
 
 async function fetchDiagLog() {
+    // Ако машината е офлайн, няма смисъл да дърпаме лога - нищо не се променя
+    if (lastData && !lastData.connected) return;
+    
     try {
         const r = await fetch('/api/diag_history');
         const d = await r.json();

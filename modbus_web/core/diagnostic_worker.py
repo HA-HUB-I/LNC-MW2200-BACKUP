@@ -25,11 +25,10 @@ class DiagnosticWorker(threading.Thread):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
         delta = val - prev_val
         
-        # Интелигентен превод
         if addr in [10032, 10033] and 32 <= val <= 126:
             human_val = f"'{chr(val)}'"
         elif addr == 21001:
-            human_val = f"M{val // 1800 if val > 0 else 0}" # LNC M-code logic
+            human_val = f"M{val // 1800 if val > 0 else 0}"
         else:
             human_val = str(val)
         
@@ -40,10 +39,12 @@ class DiagnosticWorker(threading.Thread):
     def run(self):
         while self.is_running:
             if not self.client.is_socket_open():
-                self.client.connect()
+                # Ако машината е изключена, не натоварваме системата с бързи опити
+                if not self.client.connect():
+                    time.sleep(10.0) # Чакаме 10 секунди за диагностиката
+                    continue
             
             try:
-                # Четем регистрите по-агресивно
                 for addr in self.watch_addresses:
                     rr = self.client.read_holding_registers(address=addr, count=1, device_id=MODBUS_UNIT)
                     if not rr.isError():
@@ -52,9 +53,10 @@ class DiagnosticWorker(threading.Thread):
                             self._log_change(addr, val, self.last_values[addr])
                         self.last_values[addr] = val
                 
-                time.sleep(0.05) # Още по-бързо сканиране
+                time.sleep(0.1) # Бърз режим само при активна връзка
             except Exception:
-                time.sleep(1)
+                self.client.close()
+                time.sleep(5.0)
 
     def stop(self):
         self.is_running = False

@@ -1,4 +1,5 @@
 import threading
+import logging
 from dataclasses import asdict
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from core.models import MachineState
@@ -100,4 +101,10 @@ def serve_manifest(): return send_from_directory('static', 'manifest.json')
 def serve_sw(): return send_from_directory('static', 'sw.js')
 
 if __name__ == "__main__":
+    # Спираме досадните логове на Flask за 200 OK
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)
+    
+    print("--- LNC DASHBOARD SERVER STARTED ---")
+    print("URL: http://localhost:5000")
     app.run(host="0.0.0.0", port=5000, debug=False)
