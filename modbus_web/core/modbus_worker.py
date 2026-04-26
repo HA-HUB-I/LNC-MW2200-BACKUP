@@ -21,25 +21,31 @@ class ModbusWorker(threading.Thread):
 
     def _poll(self):
         try:
-            # 1. Main Block
-            r = self.client.read_holding_registers(address=R_STATUS, count=14, device_id=MODBUS_UNIT)
-            main = r.registers if not r.isError() else [0]*14
+            # 1. Main Block (0-13)
+            r_main = self.client.read_holding_registers(address=0, count=14, device_id=MODBUS_UNIT)
+            main = r_main.registers if not r_main.isError() else [0]*14
 
-            # 2. Speeds
-            r = self.client.read_holding_registers(address=R_SPEEDS, count=11, device_id=MODBUS_UNIT)
-            speed = r.registers if not r.isError() else [0]*11
+            # 2. Speeds (1000-1010)
+            r_speed = self.client.read_holding_registers(address=1000, count=11, device_id=MODBUS_UNIT)
+            speed = r_speed.registers if not r_speed.isError() else [0]*11
 
-            # 3. Coords (11565 zone)
-            r = self.client.read_holding_registers(address=R_COORDS, count=80, device_id=MODBUS_UNIT)
-            coord = r.registers if not r.isError() else [0]*80
+            # 3. Live Block (11560 - 11650) - Разширен за Z и Velocity
+            r_coord = self.client.read_holding_registers(address=11560, count=90, device_id=MODBUS_UNIT)
+            coord = r_coord.registers if not r_coord.isError() else [0]*90
 
-            # 4. Modes & Overrides
-            r_m = self.client.read_holding_registers(address=R_MODES, count=102, device_id=MODBUS_UNIT)
-            r_s = self.client.read_holding_registers(address=R_OVERRIDES, count=50, device_id=MODBUS_UNIT)
-            mode_regs = r_m.registers if not r_m.isError() else [0]*102
-            sys_regs = r_s.registers if not r_s.isError() else [0]*50
+            # 4. Absolute Block (12000-12050)
+            r_abs = self.client.read_holding_registers(address=12000, count=50, device_id=MODBUS_UNIT)
+            abs_regs = r_abs.registers if not r_abs.isError() else [0]*50
 
-            # 5. Coils
+            # 5. Modes (6100-6202)
+            r_mode = self.client.read_holding_registers(address=6100, count=102, device_id=MODBUS_UNIT)
+            mode_regs = r_mode.registers if not r_mode.isError() else [0]*102
+            
+            # 6. Overrides (8060-8110)
+            r_sys = self.client.read_holding_registers(address=8060, count=50, device_id=MODBUS_UNIT)
+            sys_regs = r_sys.registers if not r_sys.isError() else [0]*50
+
+            # 7. Coils
             r_c = self.client.read_coils(address=0, count=41, device_id=MODBUS_UNIT)
             coils = r_c.bits if not r_c.isError() else [False]*41
 
@@ -57,14 +63,19 @@ class ModbusWorker(threading.Thread):
                 s.connected = True
                 s.status_word = main[0]
                 
-                # Потвърдени координати (с размяна X/Y)
-                s.x_pos = _regs_to_int16(coord[5]) / 1000.0   # R11570
-                s.y_pos = _regs_to_int16(coord[0]) / 1000.0   # R11565
-                s.z_pos = _regs_to_int16(coord[68]) / 1000.0  # R11633
+                # --- МАШИННИ КООРДИНАТИ (Machine / Relative) ---
+                s.x_pos = _regs_to_int16(coord[10]) / 1000.0   # R11570
+                s.y_pos = _regs_to_int16(coord[5]) / 1000.0    # R11565
+                s.z_pos = _regs_to_int16(coord[0]) / 1000.0    # R11560 (0.000)
+
+                # --- АБСОЛЮТНИ КООРДИНАТИ (Absolute / G54) ---
+                s.abs_z_pos = _regs_to_int16(abs_regs[34]) / 1000.0 # R12034 (-13.023)
+                s.abs_x_pos = s.x_pos 
+                s.abs_y_pos = s.y_pos
 
                 s.spindle_rpm = speed[7]
-                s.feed_rate = coord[73]
-                
+                s.feed_rate = coord[78] # R11638 (Индекс 78 от 11560)
+
                 s.cnc_mode_word = mode_regs[101]
                 s.decode_cnc_mode()
                 s.decode_status_word()
@@ -79,8 +90,6 @@ class ModbusWorker(threading.Thread):
                 s.spindle_override_pct = sys_regs[9] // 10 if len(sys_regs) > 9 else 100
                 s.gcode_line = sys_regs[42]
                 s.program_number = main[10]
-                s.lot_count = main[11]
-                s.lot_target = main[12]
                 
                 s.current_cycle_time_s = cur_c
                 s.total_cycle_time_s = self._total_cycle_s + cur_c
@@ -96,6 +105,10 @@ class ModbusWorker(threading.Thread):
             if self.client.is_socket_open(): self._poll()
             time.sleep(POLL_INTERVAL)
 
-    def send_coil(self, addr, value=True):
+    def write_coil(self, addr, value=True):
         if self.client.is_socket_open():
-            self.client.write_coil(addr, value, device_id=MODBUS_UNIT)
+            return self.client.write_coil(address=addr, value=value, device_id=MODBUS_UNIT)
+
+    def write_register(self, addr, value):
+        if self.client.is_socket_open():
+            return self.client.write_register(address=addr, value=value, device_id=MODBUS_UNIT)
