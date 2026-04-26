@@ -32,8 +32,8 @@ C_ESTOP = 6
 
 # DIAGNOSTIC WATCH LIST (Real-time logging to CSV)
 DIAGNOSTIC_WATCH_LIST = [
-    12030, 12031, 12032, 12033, 12034, # Absolute Zone Candidates
-    11560, 11565, 11570, 11575,        # Machine Zone
-    1000, 1001, 1007,                  # Speeds
-    32, 33                             # Status Offsets
+    11560, 11561, 11562, 11563, 11564, 11565, 11566, 11567, 11568, 11569, # Machine Zone Start
+    11570, 11571, 11572, 11573, 11574, 11575, 11576, 11577, 11578, 11579, # Machine Zone End
+    12030, 12031, 12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039, # Absolute Zone
+    1007, 11638, 0 # Speeds & Status
 ]

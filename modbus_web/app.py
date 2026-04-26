@@ -62,10 +62,36 @@ def api_scan():
     # Quick scan for UI feedback
     scans = []
     with lock:
-        scans.append({"address": 11565, "description": "Work Y", "raw_value": int(state.y_pos * 1000)})
-        scans.append({"address": 11570, "description": "Work X", "raw_value": int(state.x_pos * 1000)})
-        scans.append({"address": 11633, "description": "Work Z", "raw_value": int(state.z_pos * 1000)})
+        scans.append({"address": 11565, "description": "Machine Y", "raw_value": int(state.y_pos * 1000)})
+        scans.append({"address": 11570, "description": "Machine X", "raw_value": int(state.x_pos * 1000)})
+        scans.append({"address": 11560, "description": "Machine Z", "raw_value": int(state.z_pos * 1000)})
+        scans.append({"address": 12034, "description": "Absolute Z", "raw_value": int(state.abs_z_pos * 1000)})
     return jsonify(scans=scans)
+
+@app.route("/api/diag_history")
+def api_diag_history():
+    log_file = "modbus_web/logs/diagnostic_history.csv"
+    if not os.path.exists(log_file):
+        return jsonify(logs=[])
+    
+    try:
+        with open(log_file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            # Връщаме последните 20 промени
+            last_lines = lines[-20:] if len(lines) > 20 else lines[1:]
+            logs = []
+            for line in reversed(last_lines):
+                parts = line.strip().split(',')
+                if len(parts) >= 5:
+                    logs.append({
+                        "time": parts[0].split(' ')[1], # Само часа
+                        "addr": parts[1],
+                        "val": parts[3],
+                        "delta": parts[4]
+                    })
+            return jsonify(logs=logs)
+    except:
+        return jsonify(logs=[])
 
 @app.route('/manifest.json')
 def serve_manifest(): return send_from_directory('static', 'manifest.json')
