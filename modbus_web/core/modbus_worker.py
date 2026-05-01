@@ -47,7 +47,15 @@ class ModbusWorker(threading.Thread):
             r_sys = self.client.read_holding_registers(address=8060, count=50, device_id=MODBUS_UNIT)
             sys_regs = r_sys.registers if not r_sys.isError() else [0]*50
 
-            # 7. Coils
+            # 7. Logical/Modal Block (10000-10050)
+            r_logical = self.client.read_holding_registers(address=10000, count=50, device_id=MODBUS_UNIT)
+            logical = r_logical.registers if not r_logical.isError() else [0]*50
+
+            # 8. M-Code Block (21000-21005)
+            r_mcode = self.client.read_holding_registers(address=21000, count=5, device_id=MODBUS_UNIT)
+            mcode_regs = r_mcode.registers if not r_mcode.isError() else [0]*5
+
+            # 9. Coils
             r_c = self.client.read_coils(address=0, count=41, device_id=MODBUS_UNIT)
             coils = r_c.bits if not r_c.isError() else [False]*41
 
@@ -84,6 +92,19 @@ class ModbusWorker(threading.Thread):
                 s.spindle_override_pct = sys_regs[9] // 10 if len(sys_regs) > 9 else 100
                 s.gcode_line = sys_regs[42]
                 s.program_number = main[10]
+                s.current_tool = main[11]
+                
+                # Logical/Modal States
+                s.modal_g_64_66 = logical[6]   # R10006
+                s.modal_group_10019 = logical[19] # R10019
+                s.modal_group_10021 = logical[21] # R10021
+                ascii_val = logical[32] # R10032
+                s.cycle_step = chr(ascii_val) if 32 <= ascii_val <= 126 else str(ascii_val)
+                
+                # M-Codes
+                m_raw = mcode_regs[1] # R21001
+                s.last_m_code = m_raw // 1800 if m_raw > 0 else 0
+
                 s.current_cycle_time_s = cur_c
                 s.total_cycle_time_s = self._total_cycle_s + cur_c
                 s.last_update = now

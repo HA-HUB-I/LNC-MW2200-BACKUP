@@ -38,6 +38,15 @@ class MachineState:
     last_update: float = 0.0
     feed_override_pct: int = 100
     spindle_override_pct: int = 100
+    
+    # New Diagnostic Fields
+    current_tool: int = 0
+    last_m_code: int = 0
+    modal_g_64_66: int = 0
+    modal_group_10019: int = 0
+    modal_group_10021: int = 0
+    cycle_step: str = ""
+    
     modal_state: dict = field(default_factory=dict)
 
     def decode_status_word(self) -> None:

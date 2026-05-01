@@ -46,6 +46,14 @@ function updateUI() {
     setFl('fl-left', d.left_pos_on);
     setFl('fl-right', d.right_pos_on);
 
+    // New Machine Details
+    document.getElementById('val-tool').textContent = "T" + (d.current_tool || 0);
+    document.getElementById('val-mcode').textContent = "M" + (d.last_m_code || 0);
+    document.getElementById('val-gmodal').textContent = d.modal_g_64_66 || 0;
+    document.getElementById('val-modal19').textContent = d.modal_group_10019 || 0;
+    document.getElementById('val-modal21').textContent = d.modal_group_10021 || 0;
+    document.getElementById('val-step').textContent = d.cycle_step || "-";
+
     // Modes
     const MODES = ['MEM','MDI','JOG','INCJOG','MPG','ZRN'];
     MODES.forEach(m => {

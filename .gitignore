@@ -14,3 +14,6 @@ env/
 dist/
 build/
 modbus_web/New Text Document.txt
+*.csv
+*.txt
+node_modules/
